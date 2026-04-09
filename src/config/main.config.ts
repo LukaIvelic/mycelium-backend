@@ -17,8 +17,8 @@ export function configure(app: INestApplication) {
 
   const config = new DocumentBuilder()
     .setTitle('Mycelium Swagger')
+    .setDescription('Backend API documentation for Mycelium')
     .setVersion('1.0.0')
-    .addTag('mycelium')
     .build();
 
   const document = SwaggerModule.createDocument(app, config);
