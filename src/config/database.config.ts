@@ -10,7 +10,7 @@ export default registerAs('database', (): TypeOrmModuleOptions => {
   return {
     type: process.env.DB_TYPE as any,
     url: url.toString(),
-    ssl: isProduction ? { rejectUnauthorized: false } : false,
+    ssl: { rejectUnauthorized: false },
     entities: [__dirname + '/../**/*.entity{.ts,.js}'],
     synchronize: !isProduction,
     migrationsRun: isProduction,
