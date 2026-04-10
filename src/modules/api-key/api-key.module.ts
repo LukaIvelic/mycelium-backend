@@ -8,6 +8,7 @@ import { ApiKeyController } from './api-key.controller';
 import { ApiKeyBloomService } from './cache/api-key-bloom.service';
 import { ApiKeyLocalCacheService } from './cache/api-key-local-cache.service';
 import { ApiKeyRedisCacheService } from './cache/api-key-redis.service';
+import { ApiKeyRateLimiterService } from './cache/api-key-rate-limiter.service';
 import { ApiKeyGuard } from './api-key.guard';
 import { AuthModule } from '../auth/auth.module';
 
@@ -22,6 +23,7 @@ import { AuthModule } from '../auth/auth.module';
     ApiKeyBloomService,
     ApiKeyLocalCacheService,
     ApiKeyRedisCacheService,
+    ApiKeyRateLimiterService,
     ApiKeyGuard,
   ],
   exports: [ApiKeyService, ApiKeyGuard],

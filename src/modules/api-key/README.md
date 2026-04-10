@@ -8,6 +8,7 @@ api-key/
     api-key-bloom.service.ts        Counting Bloom Filter (L0)
     api-key-local-cache.service.ts  In-memory LRU cache (L1)
     api-key-redis.service.ts        Redis shared cache (L2)
+    api-key-rate-limiter.service.ts Redis-based per-key rate limiter
   entities/
     api_key.entity.ts               API key entity
     api_key_daily_stats.entity.ts   Daily usage statistics
@@ -25,9 +26,19 @@ api-key/
 - Prefix: first 8 characters of the raw key, stored for display/identification
 - The raw key is returned to the user exactly once at creation time
 
+## Rate Limiting
+
+Before the 4-layer lookup, `ApiKeyGuard` enforces a per-key rate limit via `ApiKeyRateLimiterService`.
+
+- **Window:** 1 second (fixed)
+- **Limit:** 100 requests per second per API key
+- **Mechanism:** Atomic Redis `INCR` + `EXPIRE` via a Lua script. The counter key is `ratelimit:{hash}:{windowSecond}`. If the key is new in this window, `EXPIRE` is set atomically in the same script.
+- **Response:** `429 Too Many Requests` if the count exceeds the limit. The 4-layer validation is never reached.
+- **Scope:** Shared across all instances via Redis.
+
 ## Validation Flow (4-Layer Lookup)
 
-When a request arrives with an `x-api-key` header, `ApiKeyGuard` extracts the raw key and calls `ApiKeyService.validateApiKey()`. The raw key is hashed with SHA-256 and then checked against four layers in order. Each layer either returns a result or passes through to the next via nullish coalescing (`??`).
+When a request arrives with an `x-api-key` header, `ApiKeyGuard` extracts the raw key, checks the rate limit, then calls `ApiKeyService.validateApiKey()`. The raw key is hashed with SHA-256 and then checked against four layers in order. Each layer either returns a result or passes through to the next via nullish coalescing (`??`).
 
 ### L0 - Bloom Filter (Counting Bloom Filter)
 
@@ -93,7 +104,7 @@ async handler(@Req() req: Request) {
 }
 ```
 
-The guard reads the raw key from the `x-api-key` HTTP header, runs it through the full 4-layer validation pipeline, and attaches the resolved ApiKey entity to the request object.
+The guard reads the raw key from the `x-api-key` HTTP header, enforces the per-key rate limit (429 if exceeded), runs the key through the 4-layer validation pipeline, and attaches the resolved ApiKey entity to the request object.
 
 ## Constraints
 
@@ -112,4 +123,4 @@ The guard reads the raw key from the `x-api-key` HTTP header, runs it through th
 
 ## Sequence Diagram Description
 
-A client sends an HTTP request with an x-api-key header to the NestJS backend. The ApiKeyGuard intercepts the request, extracts the raw API key from the x-api-key header, and passes it to ApiKeyService.validateApiKey(). The service first hashes the raw key using SHA-256 to produce a key hash. It then checks the Counting Bloom Filter: if the bloom filter returns false, the key definitely does not exist and the service immediately returns null, causing the guard to throw an UnauthorizedException. If the bloom filter returns true (the key might exist), the service checks the in-memory LRU cache using the hash. If found in the LRU cache, the result is returned immediately, either as a valid ApiKey entity or null for a cached negative. If the LRU cache misses, the service queries Redis using the key "apikey:" prefixed with the hash. If Redis has the entry, the result is written back into the LRU cache for future lookups and returned. If Redis also misses, the service queries the PostgreSQL database for a record matching the key_hash where revoked_at is null. Whatever the database returns, the result is written into both Redis with a configurable TTL and the LRU cache, then returned. The guard receives the final result: if it is a valid ApiKey entity, the guard attaches it to the request object under request.apiKey and allows the request to proceed; if it is null, the guard throws an UnauthorizedException and the request is rejected. For key creation, an authenticated user calls POST /api-keys, the service checks that no active key exists for that user, generates 32 random bytes as the raw key, hashes it with SHA-256, stores the hash and prefix in PostgreSQL, adds the hash to the bloom filter, and returns the raw key to the user once. For revocation, an authenticated user calls DELETE /api-keys, the service finds their active key, removes the hash from the bloom filter, deletes it from the LRU cache and Redis, and sets revoked_at on the database record.
+A client sends an HTTP request with an x-api-key header to the NestJS backend. The ApiKeyGuard intercepts the request, extracts the raw API key from the x-api-key header, and hashes it with SHA-256. The guard checks the rate limit via ApiKeyRateLimiterService: it increments a Redis counter keyed by `ratelimit:{hash}:{windowSecond}` using an atomic Lua script; if the count exceeds 100 within the current second, the guard immediately throws a 429 Too Many Requests error. If within the rate limit, the raw key is passed to ApiKeyService.validateApiKey(). The service hashes the key again and checks the Counting Bloom Filter: if the bloom filter returns false, the key definitely does not exist and the service immediately returns null, causing the guard to throw an UnauthorizedException. If the bloom filter returns true (the key might exist), the service checks the in-memory LRU cache using the hash. If found in the LRU cache, the result is returned immediately, either as a valid ApiKey entity or null for a cached negative. If the LRU cache misses, the service queries Redis using the key "apikey:" prefixed with the hash. If Redis has the entry, the result is written back into the LRU cache for future lookups and returned. If Redis also misses, the service queries the PostgreSQL database for a record matching the key_hash where revoked_at is null. Whatever the database returns, the result is written into both Redis with a configurable TTL and the LRU cache, then returned. The guard receives the final result: if it is a valid ApiKey entity, the guard attaches it to the request object under request.apiKey and allows the request to proceed; if it is null, the guard throws an UnauthorizedException and the request is rejected. For key creation, an authenticated user calls POST /api-keys, the service checks that no active key exists for that user, generates 32 random bytes as the raw key, hashes it with SHA-256, stores the hash and prefix in PostgreSQL, adds the hash to the bloom filter, and returns the raw key to the user once. For revocation, an authenticated user calls DELETE /api-keys, the service finds their active key, removes the hash from the bloom filter, deletes it from the LRU cache and Redis, and sets revoked_at on the database record.
