@@ -14,6 +14,6 @@ export default registerAs('database', (): TypeOrmModuleOptions => {
     entities: [__dirname + '/../**/*.entity{.ts,.js}'],
     synchronize: !isProduction,
     migrationsRun: isProduction,
-    logging: !isProduction,
+    logging: false,
   } as TypeOrmModuleOptions;
 });
