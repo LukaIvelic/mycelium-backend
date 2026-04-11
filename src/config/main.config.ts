@@ -22,6 +22,8 @@ export function configure(app: INestApplication) {
 
   app.useGlobalInterceptors(new ClassSerializerInterceptor(app.get(Reflector)));
 
+  app.setGlobalPrefix('api');
+
   const config = new DocumentBuilder()
     .setTitle('Mycelium Swagger')
     .setDescription('Backend API documentation for Mycelium')
