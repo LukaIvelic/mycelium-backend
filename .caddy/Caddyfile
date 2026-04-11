@@ -1,0 +1,13 @@
+:{$PORT} {
+    handle /profile* {
+        reverse_proxy portal.railway.internal:3001
+    }
+
+    handle /console* {
+        reverse_proxy console.railway.internal:3002
+    }
+
+    handle {
+        reverse_proxy commerce.railway.internal:8080
+    }
+}
