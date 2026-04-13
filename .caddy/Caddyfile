@@ -1,6 +1,6 @@
 :{$PORT} {
 	handle /dashboard* {
-		reverse_proxy mycelium-frontend-console.railway.internal:3001
+		reverse_proxy mycelium-frontend.railway.internal:3001
 	}
 
 	handle /api* {
