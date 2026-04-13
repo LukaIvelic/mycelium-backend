@@ -21,4 +21,20 @@ export class AuthService {
     const payload = { sub: user.id, email: user.email };
     return { access_token: await this.jwtService.signAsync(payload) };
   }
+
+  // async signup(email: string, password: string): Promise<TokenDto> {
+  //   const existingUser = await this.userService.findByEmail(email);
+  //   if (existingUser) throw new UnauthorizedException('Email already in use');
+
+  //   const password_hash = await bcrypt.hash(password, 10);
+  //   const user = await this.userService.create({ email, password_hash });
+
+  //   const payload = { sub: user.id, email: user.email };
+  //   return { access_token: await this.jwtService.signAsync(payload) };
+  // }
+
+  async validateUser(email: string): Promise<{ exists: boolean }> {
+    const user = await this.userService.findByEmail(email);
+    return { exists: !!user };
+  }
 }

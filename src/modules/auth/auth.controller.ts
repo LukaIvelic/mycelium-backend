@@ -1,7 +1,8 @@
-import { Body, Controller, Post } from '@nestjs/common';
-import { ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
+import { Body, Controller, Get, Post, Query, UseGuards } from '@nestjs/common';
+import { ApiOperation, ApiQuery, ApiResponse, ApiTags } from '@nestjs/swagger';
 import { AuthService } from './auth.service';
 import { LoginDto, TokenDto } from './auth.dto';
+import { ValidateUserRateLimitGuard } from './auth.guard';
 
 @ApiTags('auth')
 @Controller('auth')
@@ -14,5 +15,15 @@ export class AuthController {
   @ApiResponse({ status: 401, description: 'Invalid credentials' })
   login(@Body() dto: LoginDto): Promise<TokenDto> {
     return this.authService.login(dto.email, dto.password);
+  }
+
+  @Get('validate')
+  @UseGuards(ValidateUserRateLimitGuard)
+  @ApiOperation({ summary: 'Check if an email is already registered' })
+  @ApiQuery({ name: 'email', type: 'string', format: 'email' })
+  @ApiResponse({ status: 200, description: 'Returns { exists: boolean }' })
+  @ApiResponse({ status: 429, description: 'Too many requests' })
+  validateUser(@Query('email') email: string) {
+    return this.authService.validateUser(email);
   }
 }

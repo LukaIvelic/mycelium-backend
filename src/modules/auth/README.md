@@ -4,11 +4,14 @@
 
 ```
 auth/
-  auth.controller.ts   POST /auth/login endpoint
-  auth.dto.ts          LoginDto (request) and TokenDto (response)
-  auth.service.ts      Credential validation and JWT issuance
-  jwt.guard.ts         NestJS guard for Bearer token verification
-  auth.module.ts       Module registration with circular-dep forward ref
+  auth.controller.ts                  POST /auth/login + GET /auth/validate/:id endpoints
+  auth.dto.ts                         LoginDto (request) and TokenDto (response)
+  auth.service.ts                     Credential validation, JWT issuance, user validation
+  jwt.guard.ts                        NestJS guard for Bearer token verification
+  validate-user-rate-limit.guard.ts   IP-based rate limit guard for validate endpoint
+  cache/
+    auth-rate-limiter.service.ts      Redis sliding-window rate limiter
+  auth.module.ts                      Module registration with circular-dep forward ref
 ```
 
 ## Login Flow
@@ -51,6 +54,69 @@ The guard reads the token from the `Authorization: Bearer <token>` header. If th
 `AuthModule` exports:
 - `JwtGuard` — so other modules (`UserModule`, `ApiKeyModule`) can apply it without re-importing `JwtModule` themselves.
 - `JwtModule` — so other modules can inject `JwtService` if needed.
+
+## User Validation Flow (Rate-Limited)
+
+### `GET /auth/validate/:id`
+
+Public endpoint for frontend UX — checks if a user exists and is valid without requiring authentication.
+
+**Request flow:**
+
+1. `ValidateUserRateLimitGuard` runs first (via `@UseGuards`).
+2. Guard extracts client IP from `request.ip` (falls back to `request.socket.remoteAddress`).
+3. Guard calls `AuthRateLimiterService.isRateLimited(ip)`.
+4. If rate limited, returns `429 Too Many Requests` — request never reaches the handler.
+5. If allowed, `AuthController.validateUser(id)` calls `AuthService.validateUser(id)`.
+6. `AuthService` delegates to `UserService.findOne(id)` which queries for a user with matching ID and `valid_to IS NULL`.
+7. Returns the user object (200) or throws `404 Not Found`.
+
+### `AuthRateLimiterService` (`cache/auth-rate-limiter.service.ts`)
+
+Redis-backed fixed-window rate limiter keyed by IP.
+
+**Constants:**
+
+| Name | Value | Purpose |
+|------|-------|---------|
+| `RATE_LIMIT_PREFIX` | `ratelimit:validate-user:` | Redis key namespace, separate from API key rate limits |
+| `WINDOW_SECONDS` | `60` | Duration of each rate limit window (1 minute) |
+| `MAX_REQUESTS` | `10` | Maximum requests allowed per IP per window |
+
+**Lua script (`INCREMENT_SCRIPT`):**
+
+Atomic Redis script that:
+1. `INCR KEYS[1]` — increments the counter for the current window key. If the key doesn't exist, Redis creates it with value `1`.
+2. `if current == 1` — first request in the window: set an expiry so the key auto-cleans.
+3. `EXPIRE KEYS[1] ARGV[1]` — sets TTL to `WINDOW_SECONDS`.
+4. Returns the current count.
+
+Using Lua ensures INCR + EXPIRE are atomic — no race condition where a key gets created but never expires.
+
+**`isRateLimited(ip: string): Promise<boolean>`:**
+
+1. **Compute window key:** `Math.floor(Date.now() / 1000 / WINDOW_SECONDS)` produces a number constant for the entire 60s window, then increments — creating discrete time buckets.
+2. **Build Redis key:** `ratelimit:validate-user:{ip}:{windowKey}` — unique per IP per window.
+3. **Execute Lua script:** atomically increments and returns the count.
+4. **Compare:** returns `true` if count exceeds `MAX_REQUESTS`.
+
+### `ValidateUserRateLimitGuard` (`validate-user-rate-limit.guard.ts`)
+
+NestJS `CanActivate` guard. Same pattern as `ApiKeyGuard` but keyed by IP instead of API key hash.
+
+1. Extracts Express `Request` from NestJS `ExecutionContext`.
+2. Resolves client IP via `request.ip ?? request.socket.remoteAddress ?? 'unknown'`.
+3. Calls `rateLimiter.isRateLimited(ip)`.
+4. Throws `HttpException(429)` if over limit, returns `true` otherwise.
+
+### Rate Limit Rationale
+
+| Parameter | Value | Reasoning |
+|-----------|-------|-----------|
+| Window | 60s | Long enough to smooth out bursts, short enough to recover quickly |
+| Max requests | 10/min/IP | Covers normal UX (page load, tab-switch, retry) while blocking bulk enumeration |
+
+At 10 req/min, an attacker can probe 600 UUIDs/hour/IP. Since user IDs are UUIDs (not sequential), enumeration is effectively infeasible even without the rate limit. The rate limit is defense-in-depth.
 
 ## Constraints
 
