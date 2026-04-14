@@ -4,8 +4,8 @@ import { AuthService } from './auth.service';
 import { LoginDto, SignupDto, TokenDto } from './auth.dto';
 import { ValidateUserRateLimitGuard } from './auth.guard';
 
-@ApiTags('auth')
-@Controller('auth')
+@ApiTags('authentication')
+@Controller('authentication')
 export class AuthController {
   constructor(private readonly authService: AuthService) {}
 

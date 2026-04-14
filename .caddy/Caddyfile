@@ -3,6 +3,14 @@
 		reverse_proxy mycelium-frontend-console.railway.internal:3001
 	}
 
+	handle /api/auth {
+		reverse_proxy mycelium-frontend-console.railway.internal:3001
+	}
+
+	handle /api/auth/* {
+		reverse_proxy mycelium-frontend-console.railway.internal:3001
+	}
+
 	handle /api* {
 		reverse_proxy mycelium-backend.railway.internal:8000
 	}
