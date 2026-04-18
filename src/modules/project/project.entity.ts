@@ -16,6 +16,9 @@ export class Project {
   @Column()
   name: string;
 
+  @Column({ type: 'varchar', nullable: true })
+  description: string | null;
+
   @ManyToOne(() => User, { nullable: false })
   @JoinColumn({ name: 'user_id' })
   user: User;

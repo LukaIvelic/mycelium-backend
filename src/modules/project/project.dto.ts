@@ -14,6 +14,11 @@ export class CreateProjectDto {
   @IsString()
   name: string;
 
+  @ApiProperty({ example: 'This is my first project', required: false })
+  @IsOptional()
+  @IsString()
+  description?: string;
+
   @ApiProperty({ example: 'user-uuid' })
   @IsString()
   user_id: string;

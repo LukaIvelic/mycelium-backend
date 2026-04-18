@@ -144,6 +144,13 @@ export class ApiKeyService {
       .getMany();
   }
 
+  async hasActiveApiKeyForProject(projectId: string): Promise<boolean> {
+    const count = await this.apiKeyRepository.count({
+      where: { project_id: projectId, revoked_at: IsNull() },
+    });
+    return count > 0;
+  }
+
   async countActiveKeysForUser(userId: string): Promise<number> {
     return this.apiKeyRepository
       .createQueryBuilder('ak')

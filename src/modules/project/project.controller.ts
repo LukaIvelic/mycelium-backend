@@ -35,6 +35,13 @@ export class ProjectController {
     return this.projectService.findOne(id);
   }
 
+  @Get(':id/has-api-key')
+  @ApiOperation({ summary: 'Check if a project has a valid (non-revoked) API key' })
+  async hasActiveApiKey(@Param('id', ParseUUIDPipe) id: string): Promise<{ hasActiveApiKey: boolean }> {
+    const result = await this.projectService.hasActiveApiKey(id);
+    return { hasActiveApiKey: result };
+  }
+
   @Get('user/:user_id')
   @ApiQuery({
     name: 'hasApiKey',
@@ -74,9 +81,7 @@ export class ProjectController {
   @Post(':id/api-key')
   @UseGuards(JwtGuard)
   @ApiOAuth2([])
-  @ApiOperation({
-    summary: 'Create a new API key for the project (max 3 active per user)',
-  })
+  @ApiOperation({summary: 'Create a new API key for the project (max 3 active per user)'})
   async addApiKey(
     @Param('id', ParseUUIDPipe) id: string,
     @Body() dto: AddApiKeyDto,

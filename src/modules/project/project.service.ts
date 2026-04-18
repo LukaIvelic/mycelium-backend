@@ -56,6 +56,7 @@ export class ProjectService {
   async create(dto: CreateProjectDto): Promise<Project> {
     const project = this.projectRepository.create({
       name: dto.name,
+      description: dto.description,
       user: { id: dto.user_id },
     });
     return this.projectRepository.save(project);
@@ -70,6 +71,11 @@ export class ProjectService {
     const project = await this.findOne(id);
     project.valid_to = new Date();
     await this.projectRepository.save(project);
+  }
+
+  async hasActiveApiKey(projectId: string): Promise<boolean> {
+    await this.findOne(projectId);
+    return this.apiKeyService.hasActiveApiKeyForProject(projectId);
   }
 
   async addApiKeyToProject(projectId: string, userId: string, name?: string): Promise<AddApiKeyToProjectResponse> {
