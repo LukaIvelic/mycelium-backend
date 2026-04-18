@@ -29,11 +29,28 @@ export class ProjectService {
     return project;
   }
 
-  async findByUserId(user_id: string): Promise<Project[]> {
-    return this.projectRepository.find({
-      where: { user: { id: user_id } },
-      relations: ['user'],
-    });
+  async findByUserId(user_id: string, hasApiKey?: boolean): Promise<Project[]> {
+    const qb = this.projectRepository
+      .createQueryBuilder('project')
+      .leftJoinAndSelect('project.user', 'user')
+      .where('project.user_id = :userId', { userId: user_id })
+      .distinct(true);
+
+    if (hasApiKey === true) {
+      qb.innerJoin(
+        ApiKey,
+        'ak',
+        'ak.project_id = project.id AND ak.revoked_at IS NULL',
+      );
+    } else if (hasApiKey === false) {
+      qb.leftJoin(
+        ApiKey,
+        'ak',
+        'ak.project_id = project.id AND ak.revoked_at IS NULL',
+      ).andWhere('ak.id IS NULL');
+    }
+
+    return qb.getMany();
   }
 
   async create(dto: CreateProjectDto): Promise<Project> {
@@ -53,18 +70,6 @@ export class ProjectService {
     const project = await this.findOne(id);
     project.valid_to = new Date();
     await this.projectRepository.save(project);
-  }
-
-  async getProjectsWithActiveApiKeys(userId: string): Promise<Project[]> {
-    return this.projectRepository
-      .createQueryBuilder('project')
-      .innerJoin(
-        ApiKey,
-        'ak',
-        'ak.project_id = project.id AND ak.revoked_at IS NULL',
-      )
-      .where('project.user_id = :userId', { userId })
-      .getMany();
   }
 
   async addApiKeyToProject(projectId: string, userId: string, name?: string): Promise<AddApiKeyToProjectResponse> {

@@ -1,4 +1,5 @@
 import {
+  BadRequestException,
   Body,
   Controller,
   Delete,
@@ -8,11 +9,12 @@ import {
   ParseUUIDPipe,
   Patch,
   Post,
+  Query,
   Req,
   UseGuards,
 } from '@nestjs/common';
 import type { Request } from 'express';
-import { ApiOAuth2, ApiOperation, ApiTags } from '@nestjs/swagger';
+import { ApiOAuth2, ApiOperation, ApiQuery, ApiTags } from '@nestjs/swagger';
 import { ProjectService } from './project.service';
 import { AddApiKeyDto, AddApiKeyToProjectResponse, CreateProjectDto, UpdateProjectDto } from './project.dto';
 import { Project } from './project.entity';
@@ -34,8 +36,20 @@ export class ProjectController {
   }
 
   @Get('user/:user_id')
-  async findByUserId(@Param('user_id') user_id: string): Promise<Project[]> {
-    return this.projectService.findByUserId(user_id);
+  @ApiQuery({
+    name: 'hasApiKey',
+    required: false,
+    type: Boolean,
+    description: 'Optional filter: true for projects with an active API key, false for projects without one',
+  })
+  async findByUserId(
+    @Param('user_id') user_id: string,
+    @Query('hasApiKey') hasApiKey?: string,
+  ): Promise<Project[]> {
+    return this.projectService.findByUserId(
+      user_id,
+      this.parseHasApiKey(hasApiKey),
+    );
   }
 
   @Post()
@@ -57,14 +71,6 @@ export class ProjectController {
     return this.projectService.invalidate(id);
   }
 
-  @Get('active-projects/:user_id')
-  @UseGuards(JwtGuard)
-  @ApiOAuth2([])
-  @ApiOperation({ summary: 'Get all projects with active API keys for a user' })
-  async getProjectsWithActiveApiKeys(@Param('user_id', ParseUUIDPipe) id: string): Promise<Project[]> {
-    return this.projectService.getProjectsWithActiveApiKeys(id);
-  }
-
   @Post(':id/api-key')
   @UseGuards(JwtGuard)
   @ApiOAuth2([])
@@ -78,5 +84,12 @@ export class ProjectController {
   ): Promise<AddApiKeyToProjectResponse> {
     const { sub } = request['user'] as { sub: string };
     return this.projectService.addApiKeyToProject(id, sub, dto.name);
+  }
+
+  private parseHasApiKey(value?: string): boolean | undefined {
+    if (value === undefined) return undefined;
+    if (value === 'true') return true;
+    if (value === 'false') return false;
+    throw new BadRequestException('hasApiKey must be true or false');
   }
 }

@@ -111,9 +111,9 @@ export class ApiKeyService {
     };
   }
 
-  async revokeApiKey(projectId: string): Promise<void> {
+  async revokeApiKey(apiKeyId: string): Promise<void> {
     const existing = await this.apiKeyRepository.findOne({
-      where: { project_id: projectId, revoked_at: IsNull() },
+      where: { id: apiKeyId, revoked_at: IsNull() },
     });
     if (!existing) return;
 

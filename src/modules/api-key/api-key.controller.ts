@@ -36,9 +36,9 @@ export class ApiKeyController {
     return this.apiKeyService.createApiKey(projectId);
   }
 
-  @Delete(':projectId')
+  @Delete(':id')
   @HttpCode(HttpStatus.NO_CONTENT)
-  async revoke(@Param('projectId', ParseUUIDPipe) projectId: string) {
-    await this.apiKeyService.revokeApiKey(projectId);
+  async revoke(@Param('id', ParseUUIDPipe) id: string) {
+    await this.apiKeyService.revokeApiKey(id);
   }
 }
