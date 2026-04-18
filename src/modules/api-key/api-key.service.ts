@@ -1,4 +1,4 @@
-import { Injectable, ConflictException } from '@nestjs/common';
+import { Injectable, ConflictException, NotFoundException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, IsNull } from 'typeorm';
@@ -74,22 +74,28 @@ export class ApiKeyService {
     return key;
   }
 
+  private hash(rawKey: string): string {
+    return crypto.createHash('sha256').update(rawKey).digest('hex');
+  }
+
   async createApiKey(
-    userId: string,
+    projectId: string,
+    name?: string,
   ): Promise<{ key: string; message: string; entity: ApiKey }> {
     const existing = await this.apiKeyRepository.findOne({
-      where: { user_id: userId, revoked_at: IsNull() },
+      where: { project_id: projectId, revoked_at: IsNull() },
     });
     if (existing)
       throw new ConflictException(
-        'Revoke your existing API key before creating a new one',
+        'Revoke the existing API key for this project before creating a new one',
       );
 
     const rawKey = crypto.randomBytes(this.apiKeyBytes).toString('hex');
     const hash = this.hash(rawKey);
 
     const entity = this.apiKeyRepository.create({
-      user_id: userId,
+      project_id: projectId,
+      name: name ?? '',
       key_prefix: rawKey.slice(0, this.apiKeyPrefixLength),
       key_hash: hash,
       valid_from: new Date(),
@@ -105,9 +111,9 @@ export class ApiKeyService {
     };
   }
 
-  async revokeApiKey(userId: string): Promise<void> {
+  async revokeApiKey(projectId: string): Promise<void> {
     const existing = await this.apiKeyRepository.findOne({
-      where: { user_id: userId, revoked_at: IsNull() },
+      where: { project_id: projectId, revoked_at: IsNull() },
     });
     if (!existing) return;
 
@@ -120,7 +126,30 @@ export class ApiKeyService {
     });
   }
 
-  private hash(rawKey: string): string {
-    return crypto.createHash('sha256').update(rawKey).digest('hex');
+  async getProjectByApiKeyId(apiKeyId: string) {
+    const apiKey = await this.apiKeyRepository.findOne({
+      where: { id: apiKeyId },
+      relations: ['project', 'project.user'],
+    });
+    if (!apiKey) throw new NotFoundException(`API key ${apiKeyId} not found`);
+    return apiKey.project;
+  }
+
+  async findByUserId(userId: string): Promise<ApiKey[]> {
+    return this.apiKeyRepository
+      .createQueryBuilder('ak')
+      .innerJoinAndSelect('ak.project', 'project')
+      .where('project.user_id = :userId', { userId })
+      .orderBy('ak.created_at', 'DESC')
+      .getMany();
+  }
+
+  async countActiveKeysForUser(userId: string): Promise<number> {
+    return this.apiKeyRepository
+      .createQueryBuilder('ak')
+      .innerJoin('project', 'p', 'p.id = ak.project_id')
+      .where('p.user_id = :userId', { userId })
+      .andWhere('ak.revoked_at IS NULL')
+      .getCount();
   }
 }

@@ -1,4 +1,4 @@
-import { Exclude } from 'class-transformer';
+import { Exclude, Expose } from 'class-transformer';
 import { Column, Entity, PrimaryGeneratedColumn } from 'typeorm';
 
 @Entity()
@@ -12,9 +12,17 @@ export class User {
   @Column()
   last_name: string;
 
-  full_name: () => string = () => `${this.first_name} ${this.last_name}`;
+  @Expose()
+  get full_name(): string {
+    if (!this.first_name || !this.last_name) return '';
+    return `${this.first_name} ${this.last_name}`;
+  }
 
-  initials: () => string = () => `${this.first_name[0]}${this.last_name[0]}`;
+  @Expose()
+  get initials(): string {
+    if (!this.first_name || !this.last_name) return '';
+    return `${this.first_name[0]}${this.last_name[0]}`;
+  }
 
   @Column({ unique: true })
   email: string;

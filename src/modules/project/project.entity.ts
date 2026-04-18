@@ -1,7 +1,12 @@
 import { Exclude } from 'class-transformer';
-import { Column, Entity, JoinColumn, JoinTable, ManyToOne, PrimaryGeneratedColumn } from 'typeorm';
+import {
+  Column,
+  Entity,
+  JoinColumn,
+  ManyToOne,
+  PrimaryGeneratedColumn,
+} from 'typeorm';
 import { User } from '../user/user.entity';
-import { ApiKey } from '../api-key/entities/api_key.entity';
 
 @Entity()
 export class Project {
@@ -14,10 +19,6 @@ export class Project {
   @ManyToOne(() => User, { nullable: false })
   @JoinColumn({ name: 'user_id' })
   user: User;
-
-  @ManyToOne(() => ApiKey, { nullable: true})
-  @JoinColumn({ name: 'api_key' })
-  api_key: ApiKey | null;
 
   @Exclude()
   @Column({ default: () => 'CURRENT_TIMESTAMP' })

@@ -8,8 +8,9 @@ import { ProjectModule } from '../project/project.module';
 
 @Module({
   imports: [
-    TypeOrmModule.forFeature([User]), forwardRef(() => AuthModule), 
-    ProjectModule
+    TypeOrmModule.forFeature([User]),
+    forwardRef(() => AuthModule),
+    ProjectModule,
   ],
   controllers: [UserController],
   providers: [UserService],
