@@ -1,7 +1,11 @@
 import { Body, Controller, Get, Post, Query, UseGuards } from '@nestjs/common';
-import { ApiOperation, ApiQuery, ApiResponse, ApiTags } from '@nestjs/swagger';
+import { ApiConsumes, ApiExcludeEndpoint, ApiOperation, ApiQuery, ApiResponse, ApiTags } from '@nestjs/swagger';
 import { AuthService } from './auth.service';
-import { LoginDto, SignupDto, TokenDto } from './auth.dto';
+import {
+  LoginDto,
+  SignupDto,
+  TokenDto,
+} from './auth.dto';
 import { ValidateUserRateLimitGuard } from './auth.guard';
 
 @ApiTags('authentication')
@@ -15,10 +19,10 @@ export class AuthController {
   @ApiResponse({ status: 401, description: 'Email already in use' })
   signup(@Body() dto: SignupDto): Promise<TokenDto> {
     return this.authService.signup(
-      dto.first_name, 
-      dto.last_name, 
-      dto.email, 
-      dto.password
+      dto.first_name,
+      dto.last_name,
+      dto.email,
+      dto.password,
     );
   }
 
@@ -28,6 +32,13 @@ export class AuthController {
   @ApiResponse({ status: 401, description: 'Invalid credentials' })
   login(@Body() dto: LoginDto): Promise<TokenDto> {
     return this.authService.login(dto.email, dto.password);
+  }
+
+  @Post('token')
+  @ApiExcludeEndpoint()
+  @ApiConsumes('application/x-www-form-urlencoded')
+  token(@Body() body: { username: string; password: string }) {
+    return this.authService.login(body.username, body.password);
   }
 
   @Get('validate')

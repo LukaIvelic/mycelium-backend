@@ -21,12 +21,12 @@ export class ApiKeyRateLimiterService {
   async isRateLimited(hash: string): Promise<boolean> {
     const windowKey = Math.floor(Date.now() / 1000);
     const key = `${RATE_LIMIT_PREFIX}${hash}:${windowKey}`;
-    const count = await this.redis.eval(
+    const count = (await this.redis.eval(
       INCREMENT_SCRIPT,
       1,
       key,
       String(WINDOW_SECONDS),
-    ) as number;
+    )) as number;
     return count > MAX_REQUESTS;
   }
 }

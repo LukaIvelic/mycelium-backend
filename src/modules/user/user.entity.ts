@@ -6,21 +6,22 @@ export class User {
   @PrimaryGeneratedColumn('uuid')
   id: string;
 
-  @Exclude()
   @Column()
   first_name: string;
 
-  @Exclude()
   @Column()
   last_name: string;
 
-  @Exclude()
+  full_name: () => string = () => `${this.first_name} ${this.last_name}`;
+
+  initials: () => string = () => `${this.first_name[0]}${this.last_name[0]}`;
+
   @Column({ unique: true })
   email: string;
 
   @Exclude()
-  @Column()
-  password_hash: string;
+  @Column({ type: 'varchar', nullable: true })
+  password_hash: string | null;
 
   @Exclude()
   @Column({ default: () => 'CURRENT_TIMESTAMP' })

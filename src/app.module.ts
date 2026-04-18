@@ -9,6 +9,7 @@ import { typeOrmAsyncConfig } from './config/typeorm.config';
 import { UserModule } from './modules/user/user.module';
 import { AuthModule } from './modules/auth/auth.module';
 import { ApiKeyModule } from './modules/api-key/api-key.module';
+import { ProjectModule } from './modules/project/project.module';
 
 @Module({
   imports: [
@@ -24,6 +25,7 @@ import { ApiKeyModule } from './modules/api-key/api-key.module';
     UserModule,
     AuthModule,
     ApiKeyModule,
+    ProjectModule,
   ],
   controllers: [AppController],
   providers: [AppService],

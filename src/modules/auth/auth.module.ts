@@ -28,7 +28,12 @@ import { ValidateUserRateLimitGuard } from './auth.guard';
     }),
   ],
   controllers: [AuthController],
-  providers: [AuthService, JwtGuard, AuthRateLimiterService, ValidateUserRateLimitGuard],
+  providers: [
+    AuthService,
+    JwtGuard,
+    AuthRateLimiterService,
+    ValidateUserRateLimitGuard,
+  ],
   exports: [JwtGuard, JwtModule],
 })
 export class AuthModule {}

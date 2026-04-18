@@ -1,5 +1,6 @@
 import { applyDecorators } from '@nestjs/common';
 import {
+  ApiOAuth2,
   ApiOperation,
   ApiParam,
   ApiResponse,
@@ -34,6 +35,7 @@ export class UserResponse {
 
 export const ApiGetUser = () =>
   applyDecorators(
+    ApiOAuth2([]),
     ApiOperation({ summary: 'Get a user by ID' }),
     ApiParam({ name: 'id', type: 'string', format: 'uuid' }),
     ApiResponse({ status: 200, description: 'User found', type: UserResponse }),
@@ -53,6 +55,7 @@ export const ApiCreateUser = () =>
 
 export const ApiUpdateUser = () =>
   applyDecorators(
+    ApiOAuth2([]),
     ApiOperation({ summary: 'Update a user' }),
     ApiParam({ name: 'id', type: 'string', format: 'uuid' }),
     ApiResponse({
@@ -65,6 +68,7 @@ export const ApiUpdateUser = () =>
 
 export const ApiInvalidateUser = () =>
   applyDecorators(
+    ApiOAuth2([]),
     ApiOperation({ summary: 'Invalidate (soft-delete) a user' }),
     ApiParam({ name: 'id', type: 'string', format: 'uuid' }),
     ApiResponse({ status: 204, description: 'User invalidated' }),

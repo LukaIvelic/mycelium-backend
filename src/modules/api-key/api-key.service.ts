@@ -114,7 +114,10 @@ export class ApiKeyService {
     this.bloom.remove(existing.key_hash);
     this.localCache.delete(existing.key_hash);
     await this.redisCache.delete(existing.key_hash);
-    await this.apiKeyRepository.update(existing.id, { revoked_at: new Date() });
+    await this.apiKeyRepository.update(existing.id, {
+      revoked_at: new Date(),
+      valid_to: new Date(),
+    });
   }
 
   private hash(rawKey: string): string {

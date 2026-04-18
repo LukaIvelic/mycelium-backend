@@ -16,7 +16,10 @@ export class ValidateUserRateLimitGuard implements CanActivate {
     const request = context.switchToHttp().getRequest<FastifyRequest>();
     const ip = request.ip ?? 'unknown';
     if (await this.rateLimiter.isRateLimited(ip)) {
-      throw new HttpException('Too Many Requests', HttpStatus.TOO_MANY_REQUESTS);
+      throw new HttpException(
+        'Too Many Requests',
+        HttpStatus.TOO_MANY_REQUESTS,
+      );
     }
     return true;
   }

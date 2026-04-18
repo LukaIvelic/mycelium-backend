@@ -24,7 +24,11 @@ export class ApiKeyGuard implements CanActivate {
     if (!rawKey) throw new UnauthorizedException();
 
     const hash = crypto.createHash('sha256').update(rawKey).digest('hex');
-    if (await this.rateLimiter.isRateLimited(hash)) throw new HttpException('Too Many Requests', HttpStatus.TOO_MANY_REQUESTS);
+    if (await this.rateLimiter.isRateLimited(hash))
+      throw new HttpException(
+        'Too Many Requests',
+        HttpStatus.TOO_MANY_REQUESTS,
+      );
 
     const apiKey = await this.apiKeyService.validateApiKey(rawKey);
     if (!apiKey) throw new UnauthorizedException();

@@ -15,18 +15,28 @@ export class AuthService {
     const user = await this.userService.findByEmail(email);
     if (!user) throw new UnauthorizedException('Invalid credentials');
 
-    const match = await bcrypt.compare(password, user.password_hash);
+    const match = await bcrypt.compare(password, user.password_hash!);
     if (!match) throw new UnauthorizedException('Invalid credentials');
 
     const payload = { sub: user.id, email: user.email };
     return { access_token: await this.jwtService.signAsync(payload) };
   }
 
-  async signup(first_name: string, last_name: string, email: string, password: string): Promise<TokenDto> {
+  async signup(
+    first_name: string,
+    last_name: string,
+    email: string,
+    password: string,
+  ): Promise<TokenDto> {
     const existingUser = await this.userService.findByEmail(email);
     if (existingUser) throw new UnauthorizedException('Email already in use');
-    
-    const user = await this.userService.create({ first_name, last_name, email, password });
+
+    const user = await this.userService.create({
+      first_name,
+      last_name,
+      email,
+      password,
+    });
 
     const payload = { sub: user.id, email: user.email };
     return { access_token: await this.jwtService.signAsync(payload) };

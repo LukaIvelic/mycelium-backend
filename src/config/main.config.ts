@@ -10,6 +10,7 @@ export function configure(app: INestApplication) {
   app.enableCors({
     origin: true,
     credentials: true,
+    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
   });
 
   app.useGlobalPipes(
@@ -28,9 +29,22 @@ export function configure(app: INestApplication) {
     .setTitle('Mycelium Swagger')
     .setDescription('Backend API documentation for Mycelium')
     .setVersion('1.0.0')
-    .addBearerAuth()
+    .addOAuth2({
+      type: 'oauth2',
+      flows: {
+        password: {
+          tokenUrl: '/api/authentication/token',
+          scopes: {},
+        },
+      },
+    })
     .build();
 
   const document = SwaggerModule.createDocument(app, config);
-  SwaggerModule.setup('api', app, document);
+  SwaggerModule.setup('api', app, document, {
+    swaggerOptions: {
+      persistAuthorization: true,
+      initOAuth: { clientId: '' },
+    },
+  });
 }
