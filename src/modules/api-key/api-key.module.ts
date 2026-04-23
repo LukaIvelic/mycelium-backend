@@ -26,6 +26,6 @@ import { AuthModule } from '../auth/auth.module';
     ApiKeyRateLimiterService,
     ApiKeyGuard,
   ],
-  exports: [ApiKeyService, ApiKeyGuard],
+  exports: [ApiKeyService, ApiKeyGuard, ApiKeyRateLimiterService],
 })
 export class ApiKeyModule {}

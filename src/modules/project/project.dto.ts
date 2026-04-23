@@ -24,14 +24,16 @@ export class CreateProjectDto {
   user_id: string;
 }
 
-export class UpdateProjectDto extends PartialType(OmitType(CreateProjectDto, ['user_id'] as const)) {}
+export class UpdateProjectDto extends PartialType(
+  OmitType(CreateProjectDto, ['user_id'] as const),
+) {}
 
-export class AddApiKeyToProjectResponse { 
+export class AddApiKeyToProjectResponse {
   @IsString()
-  key: string; 
+  key: string;
 
   @IsString()
-  message: string; 
+  message: string;
 
-  entity: ApiKey
+  entity: ApiKey;
 }

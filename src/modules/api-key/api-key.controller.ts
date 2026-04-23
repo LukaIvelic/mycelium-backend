@@ -20,7 +20,9 @@ export class ApiKeyController {
   constructor(private readonly apiKeyService: ApiKeyService) {}
 
   @Get('user/:userId')
-  @ApiOperation({ summary: 'Get all API keys for a user (across all their projects)' })
+  @ApiOperation({
+    summary: 'Get all API keys for a user (across all their projects)',
+  })
   async findByUserId(@Param('userId', ParseUUIDPipe) userId: string) {
     return this.apiKeyService.findByUserId(userId);
   }

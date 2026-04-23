@@ -1,11 +1,14 @@
 import { Body, Controller, Get, Post, Query, UseGuards } from '@nestjs/common';
-import { ApiConsumes, ApiExcludeEndpoint, ApiOperation, ApiQuery, ApiResponse, ApiTags } from '@nestjs/swagger';
-import { AuthService } from './auth.service';
 import {
-  LoginDto,
-  SignupDto,
-  TokenDto,
-} from './auth.dto';
+  ApiConsumes,
+  ApiExcludeEndpoint,
+  ApiOperation,
+  ApiQuery,
+  ApiResponse,
+  ApiTags,
+} from '@nestjs/swagger';
+import { AuthService } from './auth.service';
+import { LoginDto, SignupDto, TokenDto } from './auth.dto';
 import { ValidateUserRateLimitGuard } from './auth.guard';
 
 @ApiTags('authentication')

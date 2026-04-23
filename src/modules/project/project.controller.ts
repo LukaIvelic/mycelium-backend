@@ -16,7 +16,12 @@ import {
 import type { Request } from 'express';
 import { ApiOAuth2, ApiOperation, ApiQuery, ApiTags } from '@nestjs/swagger';
 import { ProjectService } from './project.service';
-import { AddApiKeyDto, AddApiKeyToProjectResponse, CreateProjectDto, UpdateProjectDto } from './project.dto';
+import {
+  AddApiKeyDto,
+  AddApiKeyToProjectResponse,
+  CreateProjectDto,
+  UpdateProjectDto,
+} from './project.dto';
 import { Project } from './project.entity';
 import { JwtGuard } from '../auth/jwt.guard';
 
@@ -36,8 +41,12 @@ export class ProjectController {
   }
 
   @Get(':id/has-api-key')
-  @ApiOperation({ summary: 'Check if a project has a valid (non-revoked) API key' })
-  async hasActiveApiKey(@Param('id', ParseUUIDPipe) id: string): Promise<{ hasActiveApiKey: boolean }> {
+  @ApiOperation({
+    summary: 'Check if a project has a valid (non-revoked) API key',
+  })
+  async hasActiveApiKey(
+    @Param('id', ParseUUIDPipe) id: string,
+  ): Promise<{ hasActiveApiKey: boolean }> {
     const result = await this.projectService.hasActiveApiKey(id);
     return { hasActiveApiKey: result };
   }
@@ -47,7 +56,8 @@ export class ProjectController {
     name: 'hasApiKey',
     required: false,
     type: Boolean,
-    description: 'Optional filter: true for projects with an active API key, false for projects without one',
+    description:
+      'Optional filter: true for projects with an active API key, false for projects without one',
   })
   async findByUserId(
     @Param('user_id') user_id: string,
@@ -81,7 +91,9 @@ export class ProjectController {
   @Post(':id/api-key')
   @UseGuards(JwtGuard)
   @ApiOAuth2([])
-  @ApiOperation({summary: 'Create a new API key for the project (max 3 active per user)'})
+  @ApiOperation({
+    summary: 'Create a new API key for the project (max 3 active per user)',
+  })
   async addApiKey(
     @Param('id', ParseUUIDPipe) id: string,
     @Body() dto: AddApiKeyDto,

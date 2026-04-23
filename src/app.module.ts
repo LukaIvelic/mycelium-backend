@@ -10,6 +10,7 @@ import { UserModule } from './modules/user/user.module';
 import { AuthModule } from './modules/auth/auth.module';
 import { ApiKeyModule } from './modules/api-key/api-key.module';
 import { ProjectModule } from './modules/project/project.module';
+import { LogModule } from './modules/log/log.module';
 
 @Module({
   imports: [
@@ -26,6 +27,7 @@ import { ProjectModule } from './modules/project/project.module';
     AuthModule,
     ApiKeyModule,
     ProjectModule,
+    LogModule,
   ],
   controllers: [AppController],
   providers: [AppService],

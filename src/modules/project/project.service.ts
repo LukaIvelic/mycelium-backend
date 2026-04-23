@@ -7,7 +7,11 @@ import {
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Project } from './project.entity';
-import { AddApiKeyToProjectResponse, CreateProjectDto, UpdateProjectDto } from './project.dto';
+import {
+  AddApiKeyToProjectResponse,
+  CreateProjectDto,
+  UpdateProjectDto,
+} from './project.dto';
 import { ApiKeyService } from '../api-key/api-key.service';
 import { ApiKey } from '../api-key/entities/api_key.entity';
 
@@ -78,13 +82,37 @@ export class ProjectService {
     return this.apiKeyService.hasActiveApiKeyForProject(projectId);
   }
 
-  async addApiKeyToProject(projectId: string, userId: string, name?: string): Promise<AddApiKeyToProjectResponse> {
-    const project = await this.projectRepository.findOne({ where: { id: projectId }, relations: ['user']});
+  async assertUserOwnsProject(
+    projectId: string,
+    userId: string,
+  ): Promise<void> {
+    const project = await this.projectRepository.findOne({
+      where: { id: projectId },
+      relations: ['user'],
+    });
     if (!project) throw new NotFoundException(`Project ${projectId} not found`);
-    if (project.user.id !== userId) throw new ForbiddenException('You do not own this project');
+    if (project.user.id !== userId)
+      throw new ForbiddenException('You do not own this project');
+  }
+
+  async addApiKeyToProject(
+    projectId: string,
+    userId: string,
+    name?: string,
+  ): Promise<AddApiKeyToProjectResponse> {
+    const project = await this.projectRepository.findOne({
+      where: { id: projectId },
+      relations: ['user'],
+    });
+    if (!project) throw new NotFoundException(`Project ${projectId} not found`);
+    if (project.user.id !== userId)
+      throw new ForbiddenException('You do not own this project');
 
     const activeKeys = await this.apiKeyService.countActiveKeysForUser(userId);
-    if (activeKeys >= 3) throw new ConflictException('You can only have active API keys on up to 3 projects');
+    if (activeKeys >= 3)
+      throw new ConflictException(
+        'You can only have active API keys on up to 3 projects',
+      );
 
     return this.apiKeyService.createApiKey(projectId, name);
   }

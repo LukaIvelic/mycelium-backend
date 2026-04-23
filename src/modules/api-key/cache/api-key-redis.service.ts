@@ -24,8 +24,8 @@ export class ApiKeyRedisCacheService {
     value: ApiKey | null,
     ttlSeconds: number,
   ): Promise<void> {
-    const raw = value ?? NOT_FOUND_SENTINEL;
-    await this.redis.set(this.key(hash), JSON.stringify(raw), 'EX', ttlSeconds);
+    const raw = value === null ? NOT_FOUND_SENTINEL : JSON.stringify(value);
+    await this.redis.set(this.key(hash), raw, 'EX', ttlSeconds);
   }
 
   async delete(hash: string): Promise<void> {
