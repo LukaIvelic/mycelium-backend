@@ -14,27 +14,28 @@ Two entities, 1:1 relationship, shared primary key.
 
 ### [`Log`](./log.entity.ts) — the structure
 
-```
-id                   uuid  pk
-project_id           uuid  fk → project.id (cascade)
-api_key_id           uuid  fk → api_key.id (cascade)
-trace_id             varchar(64)    indexed
-span_id              varchar(32)
-parent_span_id       varchar(32)    nullable
-service_key          varchar(255)   nullable
-service_name         varchar(255)   nullable
-service_version      varchar(255)   nullable
-service_description  text           nullable
-service_origin       text           nullable
-method               varchar(16)
-path                 text
-origin               text
-protocol             varchar(16)
-status_code          int
-duration_ms          int
-timestamp            timestamptz
-created_at           timestamptz    default now()
-```
+| Column              | Type         | Constraints / Notes       |
+| ------------------- | ------------ | ------------------------- |
+| id                  | uuid         | Primary Key               |
+| project_id          | uuid         | FK → project.id (cascade) |
+| api_key_id          | uuid         | FK → api_key.id (cascade) |
+| trace_id            | varchar(64)  | Indexed                   |
+| span_id             | varchar(32)  |                           |
+| parent_span_id      | varchar(32)  | Nullable                  |
+| service_key         | varchar(255) | Nullable                  |
+| service_name        | varchar(255) | Nullable                  |
+| service_version     | varchar(255) | Nullable                  |
+| service_description | text         | Nullable                  |
+| service_origin      | text         | Nullable                  |
+| method              | varchar(16)  |                           |
+| path                | text         |                           |
+| origin              | text         |                           |
+| protocol            | varchar(16)  |                           |
+| status_code         | int          |                           |
+| duration_ms         | int          |                           |
+| timestamp           | timestamptz  |                           |
+| created_at          | timestamptz  | Default: `now()`          |
+
 
 The `service_*` columns carry metadata about the originating service — the SDK-assigned key, a human-readable name, a semver version string, a free-text description, and the base URL of that service. All are optional; services that don't set them send nulls and the columns are stored as such.
 
@@ -44,17 +45,18 @@ Indexes:
 
 ### [`LogDetail`](./log-detail.entity.ts) — the heavy payload
 
-```
-log_id          uuid  pk & fk → log.id (cascade)
-body_size_kb    double precision
-content_length  int
-content_type    varchar(255)
-body            text         nullable
-headers         jsonb
-completed       boolean
-aborted         boolean
-idempotent      boolean
-```
+| Column         | Type             | Constraints / Notes        |
+| -------------- | ---------------- | -------------------------- |
+| log_id         | uuid             | PK & FK → log.id (cascade) |
+| body_size_kb   | double precision |                            |
+| content_length | int              |                            |
+| content_type   | varchar(255)     |                            |
+| body           | text             | Nullable                   |
+| headers        | jsonb            |                            |
+| completed      | boolean          |                            |
+| aborted        | boolean          |                            |
+| idempotent     | boolean          |                            |
+
 
 The table uses `log_id` as both primary key and foreign key — one row per log, no separate identity. Cascade delete means removing a `Log` removes its detail atomically at the DB layer with no application logic.
 

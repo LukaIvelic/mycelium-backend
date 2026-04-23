@@ -12,16 +12,17 @@ Ownership is a first-class concept here. Before any write that affects a project
 
 ### [`Project`](./project.entity.ts)
 
-```
-id           uuid    pk, auto-generated
-name         string
-description  string  nullable
-user_id      uuid    fk → user.id (via ManyToOne)
-valid_from   date    default CURRENT_TIMESTAMP
-valid_to     date    null = active; set on soft-delete
-created_at   date    default CURRENT_TIMESTAMP
-updated_at   date    null until first update
-```
+| Column      | Type   | Constraints / Notes                          |
+| ----------- | ------ | -------------------------------------------- |
+| id          | uuid   | PK, auto-generated                           |
+| name        | string |                                              |
+| description | string | Nullable                                     |
+| user_id     | uuid   | FK → user.id (ManyToOne)                     |
+| valid_from  | date   | Default: `CURRENT_TIMESTAMP`                 |
+| valid_to    | date   | Nullable (null = active; set on soft-delete) |
+| created_at  | date   | Default: `CURRENT_TIMESTAMP`                 |
+| updated_at  | date   | Nullable (null until first update)           |
+
 
 `valid_from`, `valid_to`, and `updated_at` are decorated with `@Exclude()` and never appear in serialized responses. The `user` relation is joined on demand; the FK column `user_id` is not exposed as a separate column in responses.
 
