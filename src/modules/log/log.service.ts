@@ -4,6 +4,8 @@ import { DataSource, Repository } from 'typeorm';
 import { Log } from './log.entity';
 import { LogDetail } from './log-detail.entity';
 import { CreateLogDto } from './log.dto';
+import { ReactFlowService } from '../react-flow/react-flow.service';
+import { ServiceRegistryService } from '../service-registry/service-registry.service';
 
 @Injectable()
 export class LogService {
@@ -12,6 +14,8 @@ export class LogService {
     private readonly logRepository: Repository<Log>,
     @InjectDataSource()
     private readonly dataSource: DataSource,
+    private readonly reactFlowService: ReactFlowService,
+    private readonly serviceRegistryService: ServiceRegistryService,
   ) {}
 
   async create(
@@ -20,6 +24,16 @@ export class LogService {
     dto: CreateLogDto,
   ): Promise<Log> {
     return this.dataSource.transaction(async (manager) => {
+      if (dto.serviceOrigin?.trim()) {
+        await this.serviceRegistryService.register(projectId, apiKeyId, {
+          serviceOrigin: dto.serviceOrigin,
+          serviceKey: dto.serviceKey,
+          serviceName: dto.serviceName,
+          serviceVersion: dto.serviceVersion,
+          serviceDescription: dto.serviceDescription,
+        });
+      }
+
       const log = manager.create(Log, {
         project_id: projectId,
         api_key_id: apiKeyId,
@@ -53,6 +67,7 @@ export class LogService {
         idempotent: dto.idempotent,
       });
       await manager.save(detail);
+      await this.reactFlowService.syncProjectGraph(projectId, manager);
 
       return savedLog;
     });

@@ -7,6 +7,8 @@ import { LogController } from './log.controller';
 import { ApiKeyModule } from '../api-key/api-key.module';
 import { AuthModule } from '../auth/auth.module';
 import { ProjectModule } from '../project/project.module';
+import { ReactFlowModule } from '../react-flow/react-flow.module';
+import { ServiceRegistryModule } from '../service-registry/service-registry.module';
 
 @Module({
   imports: [
@@ -14,6 +16,8 @@ import { ProjectModule } from '../project/project.module';
     ApiKeyModule,
     AuthModule,
     ProjectModule,
+    ReactFlowModule,
+    ServiceRegistryModule,
   ],
   controllers: [LogController],
   providers: [LogService],
