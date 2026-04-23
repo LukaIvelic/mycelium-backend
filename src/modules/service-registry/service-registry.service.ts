@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { normalizeOrigin } from './normalize-origin';
@@ -42,5 +42,17 @@ export class ServiceRegistryService {
     return this.registeredServiceRepository.find({
       where: { project_id: projectId },
     });
+  }
+
+  async findById(serviceId: string): Promise<RegisteredService> {
+    const service = await this.registeredServiceRepository.findOneBy({
+      id: serviceId,
+    });
+
+    if (!service) {
+      throw new NotFoundException(`Service ${serviceId} not found`);
+    }
+
+    return service;
   }
 }
