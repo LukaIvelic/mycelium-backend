@@ -42,12 +42,17 @@ export class ApiKeyService {
 
   async validateApiKey(rawKey: string): Promise<ApiKey | null> {
     const hash = this.hash(rawKey);
-    return (
-      this.checkBloom(hash) ??
-      this.checkLocalCache(hash) ??
-      (await this.checkRedisCache(hash)) ??
-      (await this.checkDatabase(hash))
-    );
+
+    const bloomResult = this.checkBloom(hash);
+    if (bloomResult !== undefined) return bloomResult;
+
+    const localCacheResult = this.checkLocalCache(hash);
+    if (localCacheResult !== undefined) return localCacheResult;
+
+    const redisCacheResult = await this.checkRedisCache(hash);
+    if (redisCacheResult !== undefined) return redisCacheResult;
+
+    return this.checkDatabase(hash);
   }
 
   private checkBloom(hash: string): null | undefined {

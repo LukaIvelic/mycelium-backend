@@ -38,7 +38,7 @@ Before the 4-layer lookup, `ApiKeyGuard` enforces a per-key rate limit via `ApiK
 
 ## Validation Flow (4-Layer Lookup)
 
-When a request arrives with an `x-api-key` header, `ApiKeyGuard` extracts the raw key, checks the rate limit, then calls `ApiKeyService.validateApiKey()`. The raw key is hashed with SHA-256 and then checked against four layers in order. Each layer either returns a result or passes through to the next via nullish coalescing (`??`).
+When a request arrives with an `x-api-key` header, `ApiKeyGuard` extracts the raw key, checks the rate limit, then calls `ApiKeyService.validateApiKey()`. The raw key is hashed with SHA-256 and then checked against four layers in order. Each layer either returns `undefined` to continue or returns a terminal result (`ApiKey` or `null`) to stop the lookup chain.
 
 ### L0 - Bloom Filter (Counting Bloom Filter)
 
