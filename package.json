@@ -30,7 +30,7 @@
     "@nestjs/core": "^11.0.1",
     "@nestjs/jwt": "^11.0.2",
     "@nestjs/platform-express": "^11.0.1",
-    "@nestjs/platform-fastify": "^11.1.18",
+    "@nestjs/platform-fastify": "^11.0.21",
     "@nestjs/swagger": "^11.2.6",
     "@nestjs/typeorm": "^11.0.1",
     "@types/bcrypt": "^6.0.0",
@@ -71,6 +71,8 @@
     "typescript-eslint": "^8.20.0"
   },
   "overrides": {
+    "fastify": "5.8.5",
+    "uuid": "^14.0.0",
     "path-to-regexp": "^8.4.2",
     "lodash": "^4.18.1"
   },

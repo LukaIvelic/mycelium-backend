@@ -1,6 +1,6 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { EntityManager, Repository } from 'typeorm';
 import { normalizeOrigin } from './normalize-origin';
 import { RegisteredService } from './registered-service.entity';
 import { RegisterServiceDto } from './service-registry.dto';
@@ -16,9 +16,11 @@ export class ServiceRegistryService {
     projectId: string,
     apiKeyId: string,
     dto: RegisterServiceDto,
+    manager?: EntityManager,
   ): Promise<RegisteredService> {
+    const repo = this.resolveRepo(manager);
     const normalizedOrigin = normalizeOrigin(dto.serviceOrigin);
-    await this.registeredServiceRepository.upsert(
+    await repo.upsert(
       {
         project_id: projectId,
         api_key_id: apiKeyId,
@@ -33,13 +35,16 @@ export class ServiceRegistryService {
       ['project_id', 'normalized_origin'],
     );
 
-    return this.registeredServiceRepository.findOneOrFail({
+    return repo.findOneOrFail({
       where: { project_id: projectId, normalized_origin: normalizedOrigin },
     });
   }
 
-  async findByProjectId(projectId: string): Promise<RegisteredService[]> {
-    return this.registeredServiceRepository.find({
+  async findByProjectId(
+    projectId: string,
+    manager?: EntityManager,
+  ): Promise<RegisteredService[]> {
+    return this.resolveRepo(manager).find({
       where: { project_id: projectId },
     });
   }
@@ -54,5 +59,11 @@ export class ServiceRegistryService {
     }
 
     return service;
+  }
+
+  private resolveRepo(manager?: EntityManager): Repository<RegisteredService> {
+    return manager
+      ? manager.getRepository(RegisteredService)
+      : this.registeredServiceRepository;
   }
 }

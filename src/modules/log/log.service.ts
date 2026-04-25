@@ -25,13 +25,18 @@ export class LogService {
   ): Promise<Log> {
     return this.dataSource.transaction(async (manager) => {
       if (dto.serviceOrigin?.trim()) {
-        await this.serviceRegistryService.register(projectId, apiKeyId, {
-          serviceOrigin: dto.serviceOrigin,
-          serviceKey: dto.serviceKey,
-          serviceName: dto.serviceName,
-          serviceVersion: dto.serviceVersion,
-          serviceDescription: dto.serviceDescription,
-        });
+        await this.serviceRegistryService.register(
+          projectId,
+          apiKeyId,
+          {
+            serviceOrigin: dto.serviceOrigin,
+            serviceKey: dto.serviceKey,
+            serviceName: dto.serviceName,
+            serviceVersion: dto.serviceVersion,
+            serviceDescription: dto.serviceDescription,
+          },
+          manager,
+        );
       }
 
       const log = manager.create(Log, {

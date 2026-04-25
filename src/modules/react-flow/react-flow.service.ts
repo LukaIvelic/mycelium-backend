@@ -58,7 +58,7 @@ export class ReactFlowService {
     const { logRepository, reactFlowRepository } =
       this.resolveRepositories(manager);
     const logs = await this.findProjectLogs(logRepository, projectId);
-    const servicesByOrigin = await this.findServicesByOrigin(projectId);
+    const servicesByOrigin = await this.findServicesByOrigin(projectId, manager);
     const graph = this.buildGraph(logs, servicesByOrigin);
     await this.upsertProjectGraph(reactFlowRepository, projectId, graph);
   }
@@ -144,9 +144,10 @@ export class ReactFlowService {
 
   private async findServicesByOrigin(
     projectId: string,
+    manager?: EntityManager,
   ): Promise<Map<string, RegisteredService>> {
     const registeredServices =
-      await this.serviceRegistryService.findByProjectId(projectId);
+      await this.serviceRegistryService.findByProjectId(projectId, manager);
 
     return new Map(
       registeredServices.map((service) => [service.normalized_origin, service]),
