@@ -9,12 +9,7 @@ import {
   UseGuards,
 } from '@nestjs/common';
 import type { Request } from 'express';
-import {
-  ApiOAuth2,
-  ApiOperation,
-  ApiSecurity,
-  ApiTags,
-} from '@nestjs/swagger';
+import { ApiOAuth2, ApiOperation, ApiSecurity, ApiTags } from '@nestjs/swagger';
 import { ApiKeyGuard } from '../api-key/api-key.guard';
 import { ApiKey } from '../api-key/entities/api_key.entity';
 import { JwtGuard } from '../auth/jwt.guard';

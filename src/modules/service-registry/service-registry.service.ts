@@ -18,22 +18,22 @@ export class ServiceRegistryService {
     dto: RegisterServiceDto,
     manager?: EntityManager,
   ): Promise<RegisteredService> {
+    console.log(dto);
     const repo = this.resolveRepo(manager);
     const normalizedOrigin = normalizeOrigin(dto.serviceOrigin);
-    await repo.upsert(
-      {
-        project_id: projectId,
-        api_key_id: apiKeyId,
-        service_origin: dto.serviceOrigin,
-        normalized_origin: normalizedOrigin,
-        service_key: dto.serviceKey ?? null,
-        service_name: dto.serviceName ?? null,
-        service_version: dto.serviceVersion ?? null,
-        service_description: dto.serviceDescription ?? null,
-        updated_at: new Date(),
-      },
-      ['project_id', 'normalized_origin'],
-    );
+    const payload: Partial<RegisteredService> = {
+      project_id: projectId,
+      api_key_id: apiKeyId,
+      service_origin: dto.serviceOrigin,
+      normalized_origin: normalizedOrigin,
+      service_key: dto.serviceKey ?? null,
+      service_name: dto.serviceName ?? null,
+      service_version: dto.serviceVersion ?? null,
+      service_description: dto.serviceDescription ?? null,
+      service_repository: dto.serviceRepository ?? null,
+      updated_at: new Date(),
+    };
+    await repo.upsert(payload, ['project_id', 'normalized_origin']);
 
     return repo.findOneOrFail({
       where: { project_id: projectId, normalized_origin: normalizedOrigin },

@@ -47,6 +47,9 @@ export class RegisteredService {
   @Column({ type: 'text', nullable: true })
   service_description: string | null;
 
+  @Column({ type: 'text', nullable: true })
+  service_repository: string | null;
+
   @Column({ type: 'timestamptz', default: () => 'CURRENT_TIMESTAMP' })
   created_at: Date;
 

@@ -33,4 +33,13 @@ export class RegisterServiceDto {
   @IsOptional()
   @IsString()
   serviceDescription?: string | null;
+
+  @ApiProperty({
+    required: false,
+    nullable: true,
+    example: 'https://github.com/org/orders-service',
+  })
+  @IsOptional()
+  @IsString()
+  serviceRepository?: string | null;
 }
