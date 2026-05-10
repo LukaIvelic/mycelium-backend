@@ -1,11 +1,11 @@
 import { Module } from '@nestjs/common';
-import { AuthModule } from '../auth/auth.module';
+import { JwtAuthModule } from '@/common/auth/jwt-auth.module';
 import { ProjectModule } from '../project/project.module';
 import { LogDetailController } from './log-detail.controller';
 import { LogDetailService } from './log-detail.service';
 
 @Module({
-  imports: [AuthModule, ProjectModule],
+  imports: [JwtAuthModule, ProjectModule],
   controllers: [LogDetailController],
   providers: [LogDetailService],
   exports: [LogDetailService],

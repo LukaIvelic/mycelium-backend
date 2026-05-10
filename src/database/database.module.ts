@@ -7,9 +7,10 @@ import * as schema from './schemas';
 export const DRIZZLE = Symbol('DRIZZLE');
 
 const returnDrizzle = (config: ConfigService) => {
+  const isProduction = config.get<string>('NODE_ENV') === 'production';
   const pool = new Pool({
     connectionString: config.get('DATABASE_URL'),
-    ssl: { rejectUnauthorized: false },
+    ssl: isProduction ? { rejectUnauthorized: true } : false,
   });
   return drizzle(pool, { schema });
 };

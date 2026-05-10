@@ -1,12 +1,12 @@
 import { Module } from '@nestjs/common';
 import { isNull } from 'drizzle-orm';
+import { JwtAuthModule } from '@/common/auth/jwt-auth.module';
 import { BloomService } from '@/common/cache/bloom.service';
 import { CacheModule } from '@/common/cache/cache.module';
 import { ApiKeyGuard } from '@/common/guards/api-key.guard';
 import { apiKeys } from '@/database';
 import { DRIZZLE } from '@/database/database.module';
 import type { Database } from '@/database/database.types';
-import { AuthModule } from '../auth/auth.module';
 import { ApiKeyController } from './api-key.controller';
 import { ApiKeyService } from './api-key.service';
 import { ApiKeyRateLimiterService } from './api-key-rate-limiter.service';
@@ -25,7 +25,7 @@ const bloomService = {
 };
 
 @Module({
-  imports: [AuthModule, CacheModule],
+  imports: [JwtAuthModule, CacheModule],
   controllers: [ApiKeyController],
   providers: [
     ApiKeyService,
