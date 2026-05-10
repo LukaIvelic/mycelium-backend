@@ -18,10 +18,16 @@ const SALT_ROUNDS = 10;
 const { passwordHash: _passwordHash, ...publicUserColumns } =
   getTableColumns(users);
 
+/** Manages user lookup, creation, updates, and soft deletion. */
 @Injectable()
 export class UserService {
   constructor(@Inject(DRIZZLE) private readonly db: Database) {}
 
+  /**
+   * Finds a single active user by id.
+   * @param id User identifier.
+   * @returns The public user response.
+   */
   async findOne(id: string) {
     const [user] = await this.db
       .select(publicUserColumns)
@@ -32,6 +38,11 @@ export class UserService {
     return toPublicUser(user);
   }
 
+  /**
+   * Finds an active user by email address.
+   * @param email User email address.
+   * @returns The full user record, or `null` when not found.
+   */
   async findByEmail(email: string) {
     const [user] = await this.db
       .select()
@@ -41,6 +52,11 @@ export class UserService {
     return user ?? null;
   }
 
+  /**
+   * Creates a new user with a hashed password.
+   * @param dto User creation payload.
+   * @returns The created public user response.
+   */
   async create(dto: CreateUserDto) {
     const existing = await this.findByEmail(dto.email);
     if (existing) throw new ConflictException(Errors.User.EmailConflict);
@@ -60,6 +76,12 @@ export class UserService {
     return toPublicUser(user);
   }
 
+  /**
+   * Updates an existing user and re-hashes the password when provided.
+   * @param id User identifier.
+   * @param dto Partial user changes.
+   * @returns The updated public user response.
+   */
   async update(id: string, dto: UpdateUserDto) {
     this.validate(dto);
 
@@ -75,6 +97,11 @@ export class UserService {
     return this.findOne(id);
   }
 
+  /**
+   * Soft deletes a user by setting its validity end date.
+   * @param id User identifier.
+   * @returns A promise that resolves when the user is archived.
+   */
   async delete(id: string) {
     await this.db
       .update(users)
@@ -82,6 +109,11 @@ export class UserService {
       .where(eq(users.id, id));
   }
 
+  /**
+   * Ensures an update payload contains at least one defined value.
+   * @param dto Partial user update payload.
+   * @returns Nothing.
+   */
   private validate(dto: UpdateUserDto): void {
     const hasNoDefinedValues = Object.values(dto).every((v) => v === undefined);
 

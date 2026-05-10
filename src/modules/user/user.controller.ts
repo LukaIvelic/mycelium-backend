@@ -9,7 +9,7 @@ import {
   ApiGetUser,
   ApiUpdateUser,
 } from './user.decorator';
-import type { CreateUserDto, UpdateUserDto } from './user.dto';
+import { CreateUserDto, UpdateUserDto } from './user.dto';
 import type { PublicUserResponse } from './user.mapper';
 import { UserService } from './user.service';
 

@@ -3,6 +3,7 @@ import { InjectRedis } from '@nestjs-modules/ioredis';
 import type { Redis } from 'ioredis';
 import { RateLimiterService } from '@/common/rate-limit/rate-limiter.service';
 
+/** Configures rate limiting for auth validation endpoints. */
 @Injectable()
 export class AuthRateLimiterService extends RateLimiterService {
   constructor(@InjectRedis() redis: Redis) {

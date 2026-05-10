@@ -38,7 +38,7 @@ Legacy-only paths:
 - `/api/logs/{projectId}`
 - `/api/logs/{projectId}/{logId}/detail`
 - `/api/projects/user/{user_id}`
-- `/api/react-flow/{projectId}`
+- `/api/flow/{projectId}`
 - `/api/services/register`
 - `/api/services/{serviceId}`
 - `/api/users/{id}/projects`

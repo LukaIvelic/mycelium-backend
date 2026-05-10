@@ -20,6 +20,7 @@ import type {
 
 const MAX_API_KEYS_PER_USER = 3;
 
+/** Manages project ownership, lifecycle, and API key attachment rules. */
 @Injectable()
 export class ProjectService {
   constructor(
@@ -27,6 +28,12 @@ export class ProjectService {
     private readonly apiKeyService: ApiKeyService,
   ) {}
 
+  /**
+   * Finds a project and verifies that the user owns it.
+   * @param id Project identifier.
+   * @param userId Owner identifier.
+   * @returns The matching active project.
+   */
   async findOne(id: string, userId: string): Promise<Project> {
     const [project] = await this.db
       .select()
@@ -38,10 +45,21 @@ export class ProjectService {
     return project;
   }
 
+  /**
+   * Checks whether a project currently has an active API key.
+   * @param project Project to inspect.
+   * @returns `true` when an active API key exists, otherwise `false`.
+   */
   async hasActiveApiKey(project: Project): Promise<boolean> {
     return this.apiKeyService.hasActiveApiKeyForProject(project.id);
   }
 
+  /**
+   * Lists active projects for a user with an optional API key filter.
+   * @param userId Owner identifier.
+   * @param hasApiKey Optional filter for projects with or without active keys.
+   * @returns Matching active projects.
+   */
   async findByUserId(userId: string, hasApiKey?: boolean): Promise<Project[]> {
     const activeKeySubquery = this.db
       .select({ one: sql`1` })
@@ -63,6 +81,12 @@ export class ProjectService {
       .where(and(...conditions));
   }
 
+  /**
+   * Finds the project that owns an API key and verifies ownership.
+   * @param apiKeyId API key identifier.
+   * @param userId Owner identifier.
+   * @returns The matching project.
+   */
   async findByApiKeyId(apiKeyId: string, userId: string): Promise<Project> {
     const project = await this.apiKeyService.getProjectByApiKeyId(apiKeyId);
     if (project.userId !== userId)
@@ -70,6 +94,12 @@ export class ProjectService {
     return project;
   }
 
+  /**
+   * Creates a new project for a user.
+   * @param dto Project creation payload.
+   * @param userId Owner identifier.
+   * @returns The created project.
+   */
   async create(dto: CreateProjectDto, userId: string): Promise<Project> {
     const [project] = await this.db
       .insert(projects)
@@ -82,6 +112,12 @@ export class ProjectService {
     return project;
   }
 
+  /**
+   * Updates an existing project.
+   * @param project Project to update.
+   * @param dto Partial project changes.
+   * @returns The updated project.
+   */
   async update(project: Project, dto: UpdateProjectDto): Promise<Project> {
     this.validate(dto);
 
@@ -95,6 +131,11 @@ export class ProjectService {
     return this.findOne(project.id, project.userId);
   }
 
+  /**
+   * Soft deletes a project by setting its validity end date.
+   * @param project Project to delete.
+   * @returns A promise that resolves when the project is archived.
+   */
   async delete(project: Project): Promise<void> {
     await this.db
       .update(projects)
@@ -102,6 +143,12 @@ export class ProjectService {
       .where(eq(projects.id, project.id));
   }
 
+  /**
+   * Creates an API key for a project if the user has not hit the global limit.
+   * @param project Project that will receive the API key.
+   * @param name Optional display name for the key.
+   * @returns The created API key response payload.
+   */
   async addApiKeyToProject(
     project: Project,
     name?: string,
@@ -115,6 +162,11 @@ export class ProjectService {
     return this.apiKeyService.createApiKey(project.id, name);
   }
 
+  /**
+   * Ensures an update payload contains at least one defined value.
+   * @param dto Partial project update payload.
+   * @returns Nothing.
+   */
   private validate(dto: UpdateProjectDto): void {
     const hasNoDefinedValues = Object.values(dto).every((v) => v === undefined);
 

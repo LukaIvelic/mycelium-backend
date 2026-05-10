@@ -3,18 +3,28 @@ import { desc, eq } from 'drizzle-orm';
 import { type Log, logs } from '@/database';
 import { DRIZZLE } from '@/database/database.module';
 import type { Database } from '@/database/database.types';
+import { IntegrationService } from '../integration/integration.service';
 import { LogDetailService } from '../log-detail/log-detail.service';
 import { ProjectService } from '../project/project.service';
 import type { CreateLogDto } from './log.dto';
 
+/** Creates logs and lists them for authorized project owners. */
 @Injectable()
 export class LogService {
   constructor(
     @Inject(DRIZZLE) private readonly db: Database,
     private readonly projectService: ProjectService,
+    private readonly integrationService: IntegrationService,
     private readonly logDetailService: LogDetailService,
   ) {}
 
+  /**
+   * Creates a log and its detail record in a single transaction.
+   * @param projectId Project that owns the log.
+   * @param apiKeyId API key used to send the log.
+   * @param dto Log payload from the SDK.
+   * @returns The created log record.
+   */
   async create(
     projectId: string,
     apiKeyId: string,
@@ -44,6 +54,8 @@ export class LogService {
         })
         .returning();
 
+      await this.integrationService.upsertFromLog(projectId, apiKeyId, dto, tx);
+
       await this.logDetailService.create(tx, log.id, {
         bodySizeKB: dto.bodySizeKB,
         contentLength: dto.contentLength,
@@ -59,6 +71,14 @@ export class LogService {
     });
   }
 
+  /**
+   * Lists logs for a project after verifying ownership.
+   * @param projectId Project identifier.
+   * @param userId User requesting the logs.
+   * @param limit Maximum number of logs to return.
+   * @param offset Number of logs to skip.
+   * @returns Logs ordered by newest first.
+   */
   async findByProjectId(
     projectId: string,
     userId: string,

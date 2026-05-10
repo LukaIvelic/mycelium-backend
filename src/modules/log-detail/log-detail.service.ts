@@ -7,6 +7,7 @@ import { Errors } from '@/lib/constants/errors';
 import { ProjectService } from '../project/project.service';
 import type { CreateLogDetailDto } from './log-detail.dto';
 
+/** Persists and retrieves extended log detail payloads. */
 @Injectable()
 export class LogDetailService {
   constructor(
@@ -14,6 +15,13 @@ export class LogDetailService {
     private readonly projectService: ProjectService,
   ) {}
 
+  /**
+   * Creates the detail row for a log inside an existing transaction.
+   * @param tx Transaction used to persist the detail.
+   * @param logId Parent log identifier.
+   * @param dto Detail payload to store.
+   * @returns A promise that resolves when the detail is inserted.
+   */
   async create(
     tx: Database,
     logId: string,
@@ -32,6 +40,12 @@ export class LogDetailService {
     });
   }
 
+  /**
+   * Finds a log detail after verifying the user owns the parent project.
+   * @param logId Parent log identifier.
+   * @param userId User requesting the detail.
+   * @returns The stored log detail.
+   */
   async findOne(logId: string, userId: string): Promise<LogDetail> {
     const [log] = await this.db.select().from(logs).where(eq(logs.id, logId));
     if (!log) throw new NotFoundException(Errors.Log.NotFound(logId));

@@ -20,7 +20,7 @@ import {
   ApiGetProject,
   ApiUpdateProject,
 } from './project.decorator';
-import type {
+import {
   AddApiKeyDto,
   AddApiKeyToProjectResponse,
   CreateProjectDto,

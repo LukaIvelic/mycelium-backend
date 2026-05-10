@@ -10,7 +10,7 @@ import {
 } from 'drizzle-orm/pg-core';
 import { projects } from '../project';
 
-const reactFlowSchema = {
+const flowSchema = {
   id: uuid('id').primaryKey().notNull().defaultRandom(),
   projectId: uuid('project_id')
     .notNull()
@@ -20,18 +20,12 @@ const reactFlowSchema = {
   edges: jsonb('edges').notNull(),
 };
 
-const reactFlowChecks = (
-  table: Record<keyof typeof reactFlowSchema, AnyPgColumn>,
-) => [
-  uniqueIndex('idx_react_flows_project_id').on(table.projectId),
+const flowChecks = (table: Record<keyof typeof flowSchema, AnyPgColumn>) => [
+  uniqueIndex('idx_flows_project_id').on(table.projectId),
   check(
-    'react_flows_signature_length_check',
+    'flows_signature_length_check',
     sql`char_length(${table.signature}) <= 64`,
   ),
 ];
 
-export const reactFlows = pgTable(
-  'react_flow',
-  reactFlowSchema,
-  reactFlowChecks,
-);
+export const flows = pgTable('flow', flowSchema, flowChecks);

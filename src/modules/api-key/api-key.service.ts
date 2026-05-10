@@ -18,6 +18,7 @@ import { Errors } from '@/lib/constants/errors';
 
 const { keyHash: _keyHash, ...publicApiKeyColumns } = getTableColumns(apiKeys);
 
+/** Manages API key validation, caching, creation, and revocation. */
 @Injectable()
 export class ApiKeyService {
   private readonly ttlValid: number;
@@ -40,6 +41,11 @@ export class ApiKeyService {
     );
   }
 
+  /**
+   * Validates a raw API key through bloom, cache, and database checks.
+   * @param rawKey Raw API key value from the client.
+   * @returns The active API key record, or `null` when the key is invalid.
+   */
   async validateApiKey(rawKey: string): Promise<ApiKey | null> {
     const hash = this.hash(rawKey);
 
@@ -55,14 +61,29 @@ export class ApiKeyService {
     return this.checkDatabase(hash);
   }
 
+  /**
+   * Performs the bloom-filter existence shortcut for a key hash.
+   * @param hash Hashed API key value.
+   * @returns `null` when the key is definitely absent, otherwise `undefined`.
+   */
   private checkBloom(hash: string): null | undefined {
     return this.bloom.has(hash) ? undefined : null;
   }
 
+  /**
+   * Reads a cached API key result from local memory.
+   * @param hash Hashed API key value.
+   * @returns The cached key, `null` for a cached miss, or `undefined` on cache miss.
+   */
   private checkLocalCache(hash: string): ApiKey | null | undefined {
     return this.localCache.get(hash);
   }
 
+  /**
+   * Reads a cached API key result from Redis and warms the local cache.
+   * @param hash Hashed API key value.
+   * @returns The cached key, `null` for a cached miss, or `undefined` on cache miss.
+   */
   private async checkRedisCache(
     hash: string,
   ): Promise<ApiKey | null | undefined> {
@@ -71,6 +92,11 @@ export class ApiKeyService {
     return key;
   }
 
+  /**
+   * Loads an API key from the database and updates both cache layers.
+   * @param hash Hashed API key value.
+   * @returns The active API key, or `null` when not found.
+   */
   private async checkDatabase(hash: string): Promise<ApiKey | null> {
     const [key] = await this.db
       .select()
@@ -85,10 +111,21 @@ export class ApiKeyService {
     return result;
   }
 
+  /**
+   * Hashes a raw API key for lookup and storage checks.
+   * @param rawKey Raw API key value.
+   * @returns The SHA-256 hash of the key.
+   */
   private hash(rawKey: string): string {
     return crypto.createHash('sha256').update(rawKey).digest('hex');
   }
 
+  /**
+   * Creates a new active API key for a project.
+   * @param projectId Project that will own the key.
+   * @param name Optional display name for the key.
+   * @returns The raw key plus its persisted public record.
+   */
   async createApiKey(
     projectId: string,
     name?: string,
@@ -121,6 +158,12 @@ export class ApiKeyService {
     };
   }
 
+  /**
+   * Revokes an active API key owned by the given user.
+   * @param apiKeyId API key identifier to revoke.
+   * @param userId User who must own the key's project.
+   * @returns A promise that resolves when the key is revoked.
+   */
   async revokeApiKey(apiKeyId: string, userId: string): Promise<void> {
     const [row] = await this.db
       .select({ apiKey: apiKeys, ownerId: projects.userId })
@@ -142,6 +185,11 @@ export class ApiKeyService {
       .where(eq(apiKeys.id, row.apiKey.id));
   }
 
+  /**
+   * Looks up the project attached to an API key.
+   * @param apiKeyId API key identifier.
+   * @returns The project that owns the API key.
+   */
   async getProjectByApiKeyId(apiKeyId: string) {
     const [row] = await this.db
       .select({ project: projects })
@@ -152,6 +200,11 @@ export class ApiKeyService {
     return row.project;
   }
 
+  /**
+   * Lists active API keys across all projects owned by a user.
+   * @param userId Owner identifier.
+   * @returns Public API key records ordered by creation time.
+   */
   async findByUserId(userId: string): Promise<PublicApiKey[]> {
     const rows = await this.db
       .select({ apiKey: publicApiKeyColumns })
@@ -162,6 +215,11 @@ export class ApiKeyService {
     return rows.map((r) => r.apiKey);
   }
 
+  /**
+   * Checks whether a project currently has an active API key.
+   * @param projectId Project identifier.
+   * @returns `true` when an active key exists, otherwise `false`.
+   */
   async hasActiveApiKeyForProject(projectId: string): Promise<boolean> {
     const [row] = await this.db
       .select({ count: sql<number>`count(*)::int` })
@@ -170,6 +228,11 @@ export class ApiKeyService {
     return (row?.count ?? 0) > 0;
   }
 
+  /**
+   * Counts active API keys across all projects owned by a user.
+   * @param userId Owner identifier.
+   * @returns The number of active keys.
+   */
   async countActiveKeysForUser(userId: string): Promise<number> {
     const [row] = await this.db
       .select({ count: sql<number>`count(*)::int` })

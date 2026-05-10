@@ -6,7 +6,7 @@ import {
   ApiToken,
   ApiValidateUser,
 } from './auth.decorator';
-import type { LoginDto, OAuthTokenDto, SignupDto, TokenDto } from './auth.dto';
+import { LoginDto, OAuthTokenDto, SignupDto, TokenDto } from './auth.dto';
 import { AuthService } from './auth.service';
 
 @ApiTags('authentication')

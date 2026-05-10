@@ -16,6 +16,7 @@ export interface RateLimiterOptions {
   maxRequests: number;
 }
 
+/** Applies a Redis-backed fixed-window rate limit for a given key space. */
 @Injectable()
 export class RateLimiterService {
   constructor(
@@ -23,6 +24,11 @@ export class RateLimiterService {
     private readonly options: RateLimiterOptions,
   ) {}
 
+  /**
+   * Checks whether a key has exceeded the configured request limit.
+   * @param key Key to rate limit.
+   * @returns `true` when the key is over the limit, otherwise `false`.
+   */
   async isRateLimited(key: string): Promise<boolean> {
     const nowInSeconds = Math.floor(Date.now() / 1000);
     const windowKey = Math.floor(nowInSeconds / this.options.windowSeconds);
