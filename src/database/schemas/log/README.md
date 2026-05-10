@@ -10,11 +10,11 @@ Individual HTTP request/response records captured per project.
 | trace_id | text NOT NULL | Distributed trace identifier |
 | span_id | text NOT NULL | Span identifier within the trace |
 | parent_span_id | text | Parent span, if part of a trace tree |
-| service_key | text | Short identifier of the originating service |
-| service_name | text | Display name of the originating service |
-| service_version | text | Version string of the originating service |
-| service_description | text | Description of the originating service |
-| service_origin | text | Base URL of the originating service |
+| integration_key | text | Short identifier of the originating integration |
+| integration_name | text | Display name of the originating integration |
+| integration_version | text | Version string of the originating integration |
+| integration_description | text | Description of the originating integration |
+| integration_origin | text | Base URL of the originating integration |
 | method | text NOT NULL | HTTP method (GET, POST, etc.) |
 | path | text NOT NULL | Request path |
 | origin | text NOT NULL | Request origin header value |

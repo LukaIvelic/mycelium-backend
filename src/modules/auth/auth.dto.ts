@@ -33,3 +33,11 @@ export class TokenDto {
   @ApiProperty()
   accessToken!: string;
 }
+
+export class OAuthTokenDto {
+  @ApiProperty()
+  access_token!: string;
+
+  @ApiProperty({ example: 'Bearer' })
+  token_type!: 'Bearer';
+}

@@ -29,6 +29,10 @@ const ProjectErrors = {
   NotOwner: 'You do not own this project',
 } as const;
 
+const IntegrationErrors = {
+  NotFound: (id: string) => `Integration ${id} not found`,
+} as const;
+
 const LogErrors = {
   NotFound: (id: string) => `Log ${id} not found`,
 } as const;
@@ -42,6 +46,7 @@ export const Errors = {
   User: UserErrors,
   ApiKey: ApiKeyErrors,
   Project: ProjectErrors,
+  Integration: IntegrationErrors,
   Log: LogErrors,
   LogDetail: LogDetailErrors,
 } as const;

@@ -29,20 +29,20 @@ export class LogResponse {
   @ApiProperty({ example: null, nullable: true })
   parentSpanId!: string | null;
 
-  @ApiProperty({ example: 'orders-service', nullable: true })
-  serviceKey!: string | null;
+  @ApiProperty({ example: 'orders-api', nullable: true })
+  integrationKey!: string | null;
 
-  @ApiProperty({ example: 'Orders Service', nullable: true })
-  serviceName!: string | null;
+  @ApiProperty({ example: 'Orders API', nullable: true })
+  integrationName!: string | null;
 
   @ApiProperty({ example: '1.2.0', nullable: true })
-  serviceVersion!: string | null;
+  integrationVersion!: string | null;
 
   @ApiProperty({ example: null, nullable: true })
-  serviceDescription!: string | null;
+  integrationDescription!: string | null;
 
   @ApiProperty({ example: 'http://localhost:3003', nullable: true })
-  serviceOrigin!: string | null;
+  integrationOrigin!: string | null;
 
   @ApiProperty({ example: 'GET' })
   method!: string;

@@ -79,41 +79,41 @@ export class CreateLogDto {
   @IsString()
   parentSpanId?: string;
 
-  @ApiProperty({ example: 'orders-service' })
+  @ApiProperty({ example: 'orders-api' })
   @IsString()
-  serviceKey!: string;
+  integrationKey!: string;
 
-  @ApiProperty({ required: false, nullable: true, example: 'Orders Service' })
+  @ApiProperty({ required: false, nullable: true, example: 'Orders API' })
   @IsOptional()
   @IsString()
-  serviceName?: string | null;
+  integrationName?: string | null;
 
   @ApiProperty({ required: false, nullable: true, example: '1.2.0' })
   @IsOptional()
   @IsString()
-  serviceVersion?: string | null;
+  integrationVersion?: string | null;
 
   @ApiProperty({
     required: false,
     nullable: true,
-    example: 'A service that provides information about flowers',
+    example: 'An integration that provides information about flowers',
   })
   @IsOptional()
   @IsString()
-  serviceDescription?: string | null;
+  integrationDescription?: string | null;
 
   @ApiProperty({
     required: false,
     nullable: true,
-    example: 'https://github.com/org/orders-service',
+    example: 'https://github.com/org/orders-api',
   })
   @IsOptional()
   @IsString()
-  serviceRepository?: string | null;
+  integrationRepository?: string | null;
 
   @ApiProperty({ example: 'http://localhost:3003' })
   @IsString()
-  serviceOrigin!: string;
+  integrationOrigin!: string;
 
   @ApiProperty({ example: 0.128 })
   @IsNumber()

@@ -6,7 +6,7 @@ import {
   ApiToken,
   ApiValidateUser,
 } from './auth.decorator';
-import type { LoginDto, SignupDto, TokenDto } from './auth.dto';
+import type { LoginDto, OAuthTokenDto, SignupDto, TokenDto } from './auth.dto';
 import { AuthService } from './auth.service';
 
 @ApiTags('authentication')
@@ -30,8 +30,18 @@ export class AuthController {
   }
 
   @ApiToken()
-  token(@Body() body: { username: string; password: string }) {
-    return this.authService.login(body.username, body.password);
+  async token(
+    @Body() body: { username: string; password: string },
+  ): Promise<OAuthTokenDto> {
+    const { accessToken } = await this.authService.login(
+      body.username,
+      body.password,
+    );
+
+    return {
+      access_token: accessToken,
+      token_type: 'Bearer',
+    };
   }
 
   @ApiValidateUser()
