@@ -1,0 +1,14 @@
+{
+  "$schema": "https://unpkg.com/knip@6/schema.json",
+  "entry": ["src/main.ts"],
+  "project": ["src/**/*.ts"],
+  "tags": ["-lintignore"],
+  "ignoreIssues": {
+    "src/common/rate-limit/rate-limiter.service.ts": ["types"],
+    "src/modules/api-key/api-key.decorator.ts": ["exports"],
+    "src/modules/project/project.decorator.ts": ["exports"],
+    "src/modules/user/user.decorator.ts": ["exports"]
+  },
+  "exclude": ["enumMembers"],
+  "typescript": true
+}
