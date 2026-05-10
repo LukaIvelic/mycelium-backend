@@ -1,13 +1,13 @@
 import {
-  CanActivate,
-  ExecutionContext,
+  type CanActivate,
+  type ExecutionContext,
   HttpException,
   HttpStatus,
   Inject,
   Injectable,
 } from '@nestjs/common';
 import type { FastifyRequest } from 'fastify';
-import { RateLimiterService } from '@/common/rate-limit/rate-limiter.service';
+import type { RateLimiterService } from '@/common/rate-limit/rate-limiter.service';
 import { Errors } from '@/lib/constants/errors';
 
 @Injectable()

@@ -1,13 +1,13 @@
 import { forwardRef, Module } from '@nestjs/common';
-import { JwtModule } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
+import { JwtModule } from '@nestjs/jwt';
+import { JwtGuard } from '@/common/guards/jwt.guard';
 import { Errors } from '@/lib/constants/errors';
+import { ValidateUserRateLimitGuard } from '@/modules/auth/auth.guard';
+import { UserModule } from '../user/user.module';
 import { AuthController } from './auth.controller';
 import { AuthService } from './auth.service';
 import { AuthRateLimiterService } from './auth-rate-limiter.service';
-import { JwtGuard } from '@/common/guards/jwt.guard';
-import { ValidateUserRateLimitGuard } from '@/modules/auth/auth.guard';
-import { UserModule } from '../user/user.module';
 
 const authRateLimiter = {
   provide: 'AUTH_RATE_LIMITER',

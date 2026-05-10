@@ -1,15 +1,15 @@
+import { sql } from 'drizzle-orm';
 import {
+  type AnyPgColumn,
+  bigint,
+  check,
+  integer,
+  jsonb,
   pgTable,
   text,
   timestamp,
   uuid,
-  integer,
-  bigint,
-  jsonb,
-  check,
-  type AnyPgColumn,
 } from 'drizzle-orm/pg-core';
-import { sql } from 'drizzle-orm';
 import { projects } from '../../project';
 
 const apiKeySchema = {

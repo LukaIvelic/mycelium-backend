@@ -6,27 +6,27 @@ import {
   Query,
 } from '@nestjs/common';
 import { ApiTags } from '@nestjs/swagger';
-import { ProjectService } from './project.service';
-import { Errors } from '@/lib/constants/errors';
 import { CurrentUser } from '@/common/decorators/current-user.decorator';
+import type { Project } from '@/database';
+import { Errors } from '@/lib/constants/errors';
 import { CurrentProject } from '@/modules/project/current-project.decorator';
-import { type Project } from '@/database';
 import {
+  ApiAddApiKeyToProject,
+  ApiCheckProjectApiKey,
+  ApiCreateProject,
+  ApiDeleteProject,
+  ApiFindMyProjects,
+  ApiFindProjectByApiKey,
+  ApiGetProject,
+  ApiUpdateProject,
+} from './project.decorator';
+import type {
   AddApiKeyDto,
   AddApiKeyToProjectResponse,
   CreateProjectDto,
   UpdateProjectDto,
 } from './project.dto';
-import {
-  ApiAddApiKeyToProject,
-  ApiCheckProjectApiKey,
-  ApiCreateProject,
-  ApiFindMyProjects,
-  ApiFindProjectByApiKey,
-  ApiGetProject,
-  ApiDeleteProject,
-  ApiUpdateProject,
-} from './project.decorator';
+import { ProjectService } from './project.service';
 
 @ApiTags('projects')
 @Controller('projects')

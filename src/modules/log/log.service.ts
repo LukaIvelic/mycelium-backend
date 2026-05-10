@@ -1,11 +1,11 @@
 import { Inject, Injectable } from '@nestjs/common';
 import { desc, eq } from 'drizzle-orm';
+import { type Log, logs } from '@/database';
 import { DRIZZLE } from '@/database/database.module';
 import type { Database } from '@/database/database.types';
-import { logs, type Log } from '@/database';
-import { CreateLogDto } from './log.dto';
-import { ProjectService } from '../project/project.service';
 import { LogDetailService } from '../log-detail/log-detail.service';
+import { ProjectService } from '../project/project.service';
+import type { CreateLogDto } from './log.dto';
 
 @Injectable()
 export class LogService {

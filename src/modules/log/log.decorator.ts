@@ -7,66 +7,66 @@ import {
   ApiResponse,
   ApiSecurity,
 } from '@nestjs/swagger';
-import { JwtGuard } from '@/common/guards/jwt.guard';
 import { ApiKeyGuard } from '@/common/guards/api-key.guard';
+import { JwtGuard } from '@/common/guards/jwt.guard';
 
 export class LogResponse {
   @ApiProperty({ example: '550e8400-e29b-41d4-a716-446655440000' })
-  id: string;
+  id!: string;
 
   @ApiProperty({ example: '550e8400-e29b-41d4-a716-446655440000' })
-  projectId: string;
+  projectId!: string;
 
   @ApiProperty({ example: '550e8400-e29b-41d4-a716-446655440000' })
-  apiKeyId: string;
+  apiKeyId!: string;
 
   @ApiProperty({ example: 'a1b2c3d4e5f6...' })
-  traceId: string;
+  traceId!: string;
 
   @ApiProperty({ example: 'abcdef0123456789' })
-  spanId: string;
+  spanId!: string;
 
   @ApiProperty({ example: null, nullable: true })
-  parentSpanId: string | null;
+  parentSpanId!: string | null;
 
   @ApiProperty({ example: 'orders-service', nullable: true })
-  serviceKey: string | null;
+  serviceKey!: string | null;
 
   @ApiProperty({ example: 'Orders Service', nullable: true })
-  serviceName: string | null;
+  serviceName!: string | null;
 
   @ApiProperty({ example: '1.2.0', nullable: true })
-  serviceVersion: string | null;
+  serviceVersion!: string | null;
 
   @ApiProperty({ example: null, nullable: true })
-  serviceDescription: string | null;
+  serviceDescription!: string | null;
 
   @ApiProperty({ example: 'http://localhost:3003', nullable: true })
-  serviceOrigin: string | null;
+  serviceOrigin!: string | null;
 
   @ApiProperty({ example: 'GET' })
-  method: string;
+  method!: string;
 
   @ApiProperty({ example: '/api/users' })
-  path: string;
+  path!: string;
 
   @ApiProperty({ example: 'https://example.com' })
-  origin: string;
+  origin!: string;
 
   @ApiProperty({ example: 'https' })
-  protocol: string;
+  protocol!: string;
 
   @ApiProperty({ example: 200 })
-  statusCode: number;
+  statusCode!: number;
 
   @ApiProperty({ example: 42 })
-  durationMs: number;
+  durationMs!: number;
 
   @ApiProperty({ example: '2026-04-21T10:00:00.000Z' })
-  timestamp: Date;
+  timestamp!: Date;
 
   @ApiProperty({ example: '2026-04-21T10:00:00.000Z' })
-  createdAt: Date;
+  createdAt!: Date;
 }
 
 export function ApiCreateLog() {

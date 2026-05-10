@@ -4,20 +4,20 @@ import { IsEmail, IsString, MinLength } from 'class-validator';
 export class CreateUserDto {
   @ApiProperty({ example: 'John' })
   @IsString()
-  firstName: string;
+  firstName!: string;
 
   @ApiProperty({ example: 'Doe' })
   @IsString()
-  lastName: string;
+  lastName!: string;
 
   @ApiProperty({ example: 'john.doe@example.com' })
   @IsEmail()
-  email: string;
+  email!: string;
 
   @ApiProperty({ example: 'strongPassword123' })
   @IsString()
   @MinLength(8)
-  password: string;
+  password!: string;
 }
 
 export class UpdateUserDto extends PartialType(CreateUserDto) {}

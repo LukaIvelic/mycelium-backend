@@ -1,13 +1,13 @@
+import { sql } from 'drizzle-orm';
 import {
+  type AnyPgColumn,
+  check,
+  jsonb,
   pgTable,
   text,
-  uuid,
-  jsonb,
-  check,
   uniqueIndex,
-  type AnyPgColumn,
+  uuid,
 } from 'drizzle-orm/pg-core';
-import { sql } from 'drizzle-orm';
 import { projects } from '../project';
 
 const reactFlowSchema = {

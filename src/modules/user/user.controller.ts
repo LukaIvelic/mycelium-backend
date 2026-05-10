@@ -1,17 +1,17 @@
 import { Body, Controller, ForbiddenException, Param } from '@nestjs/common';
 import { ApiTags } from '@nestjs/swagger';
-import { UserService } from './user.service';
-import type { PublicUserResponse } from './user.mapper';
-import { CreateUserDto, UpdateUserDto } from './user.dto';
 import { CurrentUser } from '@/common/decorators/current-user.decorator';
 import { Errors } from '@/lib/constants/errors';
 import {
   ApiCreateUser,
+  ApiDeleteUser,
   ApiFindMe,
   ApiGetUser,
-  ApiDeleteUser,
   ApiUpdateUser,
 } from './user.decorator';
+import type { CreateUserDto, UpdateUserDto } from './user.dto';
+import type { PublicUserResponse } from './user.mapper';
+import { UserService } from './user.service';
 
 @ApiTags('users')
 @Controller('users')

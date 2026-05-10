@@ -1,9 +1,9 @@
 import { forwardRef, Module } from '@nestjs/common';
-import { ProjectController } from './project.controller';
-import { AuthModule } from '../auth/auth.module';
-import { ApiKeyModule } from '../api-key/api-key.module';
-import { ProjectService } from './project.service';
 import { ProjectOwnershipGuard } from '@/modules/project/project-ownership.guard';
+import { ApiKeyModule } from '../api-key/api-key.module';
+import { AuthModule } from '../auth/auth.module';
+import { ProjectController } from './project.controller';
+import { ProjectService } from './project.service';
 
 @Module({
   imports: [forwardRef(() => AuthModule), ApiKeyModule],

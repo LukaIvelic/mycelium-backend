@@ -1,11 +1,11 @@
 import {
+  type AnyPgColumn,
+  integer,
   pgTable,
+  primaryKey,
   text,
   timestamp,
   uuid,
-  integer,
-  primaryKey,
-  type AnyPgColumn,
 } from 'drizzle-orm/pg-core';
 import { apiKeys } from '../api-key';
 

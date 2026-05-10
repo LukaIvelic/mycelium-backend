@@ -1,12 +1,12 @@
+import { sql } from 'drizzle-orm';
 import {
+  type AnyPgColumn,
+  check,
   pgTable,
   text,
   timestamp,
   uuid,
-  check,
-  type AnyPgColumn,
 } from 'drizzle-orm/pg-core';
-import { sql } from 'drizzle-orm';
 
 const userSchema = {
   id: uuid('id').primaryKey().notNull().defaultRandom(),

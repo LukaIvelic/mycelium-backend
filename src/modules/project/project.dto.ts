@@ -1,6 +1,6 @@
-import { PublicApiKey } from '@/database';
 import { ApiProperty, PartialType } from '@nestjs/swagger';
 import { IsOptional, IsString } from 'class-validator';
+import type { PublicApiKey } from '@/database';
 
 export class AddApiKeyDto {
   @ApiProperty({ example: 'production key', required: false })
@@ -12,7 +12,7 @@ export class AddApiKeyDto {
 export class CreateProjectDto {
   @ApiProperty({ example: 'first project' })
   @IsString()
-  name: string;
+  name!: string;
 
   @ApiProperty({ example: 'This is my first project', required: false })
   @IsOptional()
@@ -24,10 +24,10 @@ export class UpdateProjectDto extends PartialType(CreateProjectDto) {}
 
 export class AddApiKeyToProjectResponse {
   @IsString()
-  key: string;
+  key!: string;
 
   @IsString()
-  message: string;
+  message!: string;
 
-  entity: PublicApiKey;
+  entity!: PublicApiKey;
 }

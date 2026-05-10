@@ -1,9 +1,9 @@
 import {
-  pgTable,
-  uuid,
-  integer,
-  primaryKey,
   type AnyPgColumn,
+  integer,
+  pgTable,
+  primaryKey,
+  uuid,
 } from 'drizzle-orm/pg-core';
 import { apiKeys } from '../api-key';
 

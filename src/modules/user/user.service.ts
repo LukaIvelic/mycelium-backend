@@ -1,18 +1,18 @@
 import {
   BadRequestException,
   ConflictException,
+  Inject,
   Injectable,
   NotFoundException,
-  Inject,
 } from '@nestjs/common';
 import * as bcrypt from 'bcrypt';
 import { and, eq, getTableColumns, isNull } from 'drizzle-orm';
-import { CreateUserDto, UpdateUserDto } from './user.dto';
+import { users } from '@/database';
 import { DRIZZLE } from '@/database/database.module';
 import type { Database } from '@/database/database.types';
-import { users } from '@/database';
-import { toPublicUser } from './user.mapper';
 import { Errors } from '@/lib/constants/errors';
+import type { CreateUserDto, UpdateUserDto } from './user.dto';
+import { toPublicUser } from './user.mapper';
 
 const SALT_ROUNDS = 10;
 const { passwordHash: _passwordHash, ...publicUserColumns } =

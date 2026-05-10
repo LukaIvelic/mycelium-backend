@@ -1,11 +1,11 @@
 import { Body, Controller, Query } from '@nestjs/common';
 import { ApiTags } from '@nestjs/swagger';
-import { LogService } from './log.service';
-import { CreateLogDto, ListLogsQueryDto } from './log.dto';
-import { type Log, type ApiKey } from '@/database';
 import { CurrentUser } from '@/common/decorators/current-user.decorator';
+import type { ApiKey, Log } from '@/database';
 import { CurrentApiKey } from '@/modules/api-key/current-api-key.decorator';
 import { ApiCreateLog, ApiListLogs } from './log.decorator';
+import type { CreateLogDto, ListLogsQueryDto } from './log.dto';
+import { LogService } from './log.service';
 
 @ApiTags('logs')
 @Controller('logs')

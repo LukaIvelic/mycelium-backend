@@ -1,15 +1,15 @@
+import { sql } from 'drizzle-orm';
 import {
+  type AnyPgColumn,
+  check,
   pgTable,
   text,
   timestamp,
-  uuid,
-  check,
   uniqueIndex,
-  type AnyPgColumn,
+  uuid,
 } from 'drizzle-orm/pg-core';
-import { sql } from 'drizzle-orm';
-import { projects } from '../project';
 import { apiKeys } from '../api-key/api-key';
+import { projects } from '../project';
 
 const registeredServiceSchema = {
   id: uuid('id').primaryKey().notNull().defaultRandom(),

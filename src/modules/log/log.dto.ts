@@ -16,36 +16,36 @@ import {
 export class CreateLogDto {
   @ApiProperty({ example: 'GET' })
   @IsString()
-  method: string;
+  method!: string;
 
   @ApiProperty({ required: false, nullable: true, example: null })
   @IsOptional()
   @IsString()
-  body: string | null;
+  body!: string | null;
 
   @ApiProperty({ example: true })
   @IsBoolean()
-  completed: boolean;
+  completed!: boolean;
 
   @ApiProperty({ example: false })
   @IsBoolean()
-  aborted: boolean;
+  aborted!: boolean;
 
   @ApiProperty({ example: '/api/users' })
   @IsString()
-  path: string;
+  path!: string;
 
   @ApiProperty({ example: 'https://example.com' })
   @IsString()
-  origin: string;
+  origin!: string;
 
   @ApiProperty({ example: 'https' })
   @IsString()
-  protocol: string;
+  protocol!: string;
 
   @ApiProperty({ example: true })
   @IsBoolean()
-  idempotent: boolean;
+  idempotent!: boolean;
 
   @ApiProperty({ required: false, nullable: true, example: 128 })
   @IsOptional()
@@ -68,11 +68,11 @@ export class CreateLogDto {
 
   @ApiProperty({ example: 'a1b2c3d4e5f6...' })
   @IsString()
-  traceId: string;
+  traceId!: string;
 
   @ApiProperty({ example: 'abcdef0123456789' })
   @IsString()
-  spanId: string;
+  spanId!: string;
 
   @ApiProperty({ required: false, nullable: true })
   @IsOptional()
@@ -81,7 +81,7 @@ export class CreateLogDto {
 
   @ApiProperty({ example: 'orders-service' })
   @IsString()
-  serviceKey: string;
+  serviceKey!: string;
 
   @ApiProperty({ required: false, nullable: true, example: 'Orders Service' })
   @IsOptional()
@@ -113,31 +113,31 @@ export class CreateLogDto {
 
   @ApiProperty({ example: 'http://localhost:3003' })
   @IsString()
-  serviceOrigin: string;
+  serviceOrigin!: string;
 
   @ApiProperty({ example: 0.128 })
   @IsNumber()
   @Min(0)
-  bodySizeKB: number;
+  bodySizeKB!: number;
 
   @ApiProperty({ example: '2026-04-21T10:00:00.000Z' })
   @IsISO8601()
-  timestamp: string;
+  timestamp!: string;
 
   @ApiProperty({ example: 42 })
   @IsInt()
   @Min(0)
-  durationMs: number;
+  durationMs!: number;
 
   @ApiProperty({ example: 200 })
   @IsInt()
-  statusCode: number;
+  statusCode!: number;
 }
 
 export class ListLogsQueryDto {
   @ApiProperty({ example: '550e8400-e29b-41d4-a716-446655440000' })
   @IsUUID()
-  projectId: string;
+  projectId!: string;
 
   @ApiProperty({ required: false, example: 100, default: 100 })
   @IsOptional()

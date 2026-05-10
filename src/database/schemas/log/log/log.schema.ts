@@ -1,16 +1,16 @@
+import { sql } from 'drizzle-orm';
 import {
+  type AnyPgColumn,
+  check,
+  index,
+  integer,
   pgTable,
   text,
   timestamp,
   uuid,
-  integer,
-  check,
-  index,
-  type AnyPgColumn,
 } from 'drizzle-orm/pg-core';
-import { sql } from 'drizzle-orm';
-import { projects } from '../../project';
 import { apiKeys } from '../../api-key/api-key';
+import { projects } from '../../project';
 
 const logSchema = {
   id: uuid('id').primaryKey().notNull().defaultRandom(),

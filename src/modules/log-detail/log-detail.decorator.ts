@@ -10,31 +10,31 @@ import { JwtGuard } from '@/common/guards/jwt.guard';
 
 export class LogDetailResponse {
   @ApiProperty({ example: '550e8400-e29b-41d4-a716-446655440000' })
-  logId: string;
+  logId!: string;
 
   @ApiProperty({ example: 0.128 })
-  bodySizeKb: number;
+  bodySizeKb!: number;
 
   @ApiProperty({ example: 128 })
-  contentLength: number;
+  contentLength!: number;
 
   @ApiProperty({ example: 'application/json' })
-  contentType: string;
+  contentType!: string;
 
   @ApiProperty({ example: '{"hello":"world"}', nullable: true })
-  body: string | null;
+  body!: string | null;
 
   @ApiProperty({ example: { 'content-type': 'application/json' } })
-  headers: unknown;
+  headers!: unknown;
 
   @ApiProperty({ example: true })
-  completed: boolean;
+  completed!: boolean;
 
   @ApiProperty({ example: false })
-  aborted: boolean;
+  aborted!: boolean;
 
   @ApiProperty({ example: true })
-  idempotent: boolean;
+  idempotent!: boolean;
 }
 
 export function ApiGetLogDetail() {

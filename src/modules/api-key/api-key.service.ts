@@ -1,3 +1,4 @@
+import * as crypto from 'node:crypto';
 import {
   ConflictException,
   ForbiddenException,
@@ -6,14 +7,13 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import * as crypto from 'crypto';
 import { and, desc, eq, getTableColumns, isNull, sql } from 'drizzle-orm';
 import { BloomService } from '@/common/cache/bloom.service';
 import { LocalCacheService } from '@/common/cache/local-cache.service';
 import { RedisCacheService } from '@/common/cache/redis-cache.service';
+import { type ApiKey, apiKeys, type PublicApiKey, projects } from '@/database';
 import { DRIZZLE } from '@/database/database.module';
 import type { Database } from '@/database/database.types';
-import { apiKeys, projects, type ApiKey, type PublicApiKey } from '@/database';
 import { Errors } from '@/lib/constants/errors';
 
 const { keyHash: _keyHash, ...publicApiKeyColumns } = getTableColumns(apiKeys);

@@ -1,8 +1,8 @@
 import { Controller, Param, ParseUUIDPipe } from '@nestjs/common';
 import { ApiTags } from '@nestjs/swagger';
-import { ApiKeyService } from './api-key.service';
 import { CurrentUser } from '@/common/decorators/current-user.decorator';
 import { ApiFindMyApiKeys, ApiRevokeApiKey } from './api-key.decorator';
+import { ApiKeyService } from './api-key.service';
 
 @ApiTags('api-keys')
 @Controller('api-keys')

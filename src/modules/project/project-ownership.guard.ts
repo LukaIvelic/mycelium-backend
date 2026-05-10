@@ -1,4 +1,8 @@
-import { CanActivate, ExecutionContext, Injectable } from '@nestjs/common';
+import {
+  type CanActivate,
+  type ExecutionContext,
+  Injectable,
+} from '@nestjs/common';
 import type { Request } from 'express';
 import { ProjectService } from '@/modules/project/project.service';
 

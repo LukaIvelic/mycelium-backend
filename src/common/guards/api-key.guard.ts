@@ -1,16 +1,16 @@
+import * as crypto from 'node:crypto';
 import {
-  CanActivate,
-  ExecutionContext,
+  type CanActivate,
+  type ExecutionContext,
   HttpException,
   HttpStatus,
   Injectable,
   UnauthorizedException,
 } from '@nestjs/common';
 import type { Request } from 'express';
-import * as crypto from 'crypto';
-import { ApiKeyRateLimiterService } from '@/modules/api-key/api-key-rate-limiter.service';
 import { Errors } from '@/lib/constants/errors';
 import { ApiKeyService } from '@/modules/api-key/api-key.service';
+import { ApiKeyRateLimiterService } from '@/modules/api-key/api-key-rate-limiter.service';
 
 @Injectable()
 export class ApiKeyGuard implements CanActivate {

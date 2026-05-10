@@ -1,11 +1,11 @@
 import { Inject, Injectable, NotFoundException } from '@nestjs/common';
 import { eq } from 'drizzle-orm';
+import { type LogDetail, logDetails, logs } from '@/database';
 import { DRIZZLE } from '@/database/database.module';
 import type { Database } from '@/database/database.types';
-import { logs, logDetails, type LogDetail } from '@/database';
 import { Errors } from '@/lib/constants/errors';
-import { CreateLogDetailDto } from './log-detail.dto';
 import { ProjectService } from '../project/project.service';
+import type { CreateLogDetailDto } from './log-detail.dto';
 
 @Injectable()
 export class LogDetailService {

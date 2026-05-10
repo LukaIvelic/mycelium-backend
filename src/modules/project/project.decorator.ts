@@ -20,28 +20,28 @@ import { ProjectOwnershipGuard } from '@/modules/project/project-ownership.guard
 
 export class ProjectResponse {
   @ApiProperty({ example: '550e8400-e29b-41d4-a716-446655440000' })
-  id: string;
+  id!: string;
 
   @ApiProperty({ example: 'My project' })
-  name: string;
+  name!: string;
 
   @ApiProperty({ example: 'A short description', nullable: true })
-  description: string | null;
+  description!: string | null;
 
   @ApiProperty({ example: '550e8400-e29b-41d4-a716-446655440000' })
-  user_id: string;
+  user_id!: string;
 
   @ApiProperty({ example: '2024-01-01T00:00:00.000Z' })
-  valid_from: Date;
+  valid_from!: Date;
 
   @ApiProperty({ example: null, nullable: true })
-  valid_to: Date | null;
+  valid_to!: Date | null;
 
   @ApiProperty({ example: '2024-01-01T00:00:00.000Z' })
-  created_at: Date;
+  created_at!: Date;
 
   @ApiProperty({ example: null, nullable: true })
-  updated_at: Date | null;
+  updated_at!: Date | null;
 }
 
 export function ApiFindMyProjects() {

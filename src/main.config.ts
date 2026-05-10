@@ -1,12 +1,12 @@
 import {
   ClassSerializerInterceptor,
+  type INestApplication,
   ValidationPipe,
-  INestApplication,
-} from "@nestjs/common";
-import { Reflector } from "@nestjs/core";
-import { SwaggerModule, DocumentBuilder } from "@nestjs/swagger";
-import { HttpMethod } from "./lib/enumerations/http-methods";
-import { MyceliumInformation } from "./lib/constants/mycelium-app-information";
+} from '@nestjs/common';
+import { Reflector } from '@nestjs/core';
+import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
+import { MyceliumInformation } from './lib/constants/mycelium-app-information';
+import { HttpMethod } from './lib/enumerations/http-methods';
 
 /** Applies all global middleware, pipes, and Swagger to the app. */
 export function configure(app: INestApplication) {
@@ -53,7 +53,7 @@ function generateDocumentBuilder() {
     .setDescription(MyceliumInformation.description)
     .setVersion(MyceliumInformation.version)
     .addOAuth2({
-      type: "oauth2",
+      type: 'oauth2',
       flows: {
         password: {
           tokenUrl: MyceliumInformation.oAuthTokenUrl,
@@ -63,11 +63,11 @@ function generateDocumentBuilder() {
     })
     .addApiKey(
       {
-        type: "apiKey",
-        name: "x-api-key",
-        in: "header",
+        type: 'apiKey',
+        name: 'x-api-key',
+        in: 'header',
       },
-      "x-api-key",
+      'x-api-key',
     );
 }
 
@@ -78,7 +78,7 @@ function setupSwagger(app: INestApplication) {
   SwaggerModule.setup(MyceliumInformation.swaggerPath, app, document, {
     swaggerOptions: {
       persistAuthorization: true,
-      tagsSorter: "alpha",
+      tagsSorter: 'alpha',
     },
   });
 }

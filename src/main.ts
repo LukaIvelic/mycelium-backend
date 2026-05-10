@@ -1,12 +1,12 @@
+import { ConfigService } from '@nestjs/config';
 import { NestFactory } from '@nestjs/core';
 import {
   FastifyAdapter,
-  NestFastifyApplication,
+  type NestFastifyApplication,
 } from '@nestjs/platform-fastify';
-import { ConfigService } from '@nestjs/config';
 import { AppModule } from './app.module';
-import { configure } from './main.config';
 import { MyceliumInformation } from './lib/constants/mycelium-app-information';
+import { configure } from './main.config';
 
 /** Creates the Fastify app, applies config, and starts listening. */
 async function bootstrap() {

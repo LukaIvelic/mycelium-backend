@@ -18,28 +18,28 @@ import { JwtGuard } from '@/common/guards/jwt.guard';
 
 export class UserResponse {
   @ApiProperty({ example: '550e8400-e29b-41d4-a716-446655440000' })
-  id: string;
+  id!: string;
 
   @ApiProperty({ example: 'John' })
-  first_name: string;
+  first_name!: string;
 
   @ApiProperty({ example: 'Doe' })
-  last_name: string;
+  last_name!: string;
 
   @ApiProperty({ example: 'john.doe@example.com' })
-  email: string;
+  email!: string;
 
   @ApiProperty({ example: '2024-01-01T00:00:00.000Z' })
-  valid_from: Date;
+  valid_from!: Date;
 
   @ApiProperty({ example: null, nullable: true })
-  valid_to: Date | null;
+  valid_to!: Date | null;
 
   @ApiProperty({ example: '2024-01-01T00:00:00.000Z' })
-  created_at: Date;
+  created_at!: Date;
 
   @ApiProperty({ example: null, nullable: true })
-  updated_at: Date | null;
+  updated_at!: Date | null;
 }
 
 export function ApiFindMe() {

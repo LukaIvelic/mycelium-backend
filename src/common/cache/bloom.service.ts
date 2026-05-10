@@ -1,9 +1,9 @@
-import { Injectable, OnModuleInit } from '@nestjs/common';
+import { Injectable, type OnModuleInit } from '@nestjs/common';
 import { CountingBloomFilter } from 'bloom-filters';
 
 @Injectable()
 export class BloomService implements OnModuleInit {
-  private bloom: CountingBloomFilter;
+  private bloom!: CountingBloomFilter;
   private readonly headroomBufferMultiplier = 2;
   private readonly falsePositiveRate = 0.01;
 
@@ -15,7 +15,9 @@ export class BloomService implements OnModuleInit {
       Math.max(hashes.length * this.headroomBufferMultiplier, 1_000),
       this.falsePositiveRate,
     );
-    hashes.forEach((h) => this.bloom.add(h));
+    for (const hash of hashes) {
+      this.bloom.add(hash);
+    }
   }
 
   has(hash: string): boolean {

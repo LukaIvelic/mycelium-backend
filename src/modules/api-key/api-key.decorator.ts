@@ -16,28 +16,28 @@ import { JwtGuard } from '@/common/guards/jwt.guard';
 
 export class ApiKeyResponse {
   @ApiProperty({ example: '550e8400-e29b-41d4-a716-446655440000' })
-  id: string;
+  id!: string;
 
   @ApiProperty({ example: 'My API Key' })
-  name: string;
+  name!: string;
 
   @ApiProperty({ example: '550e8400-e29b-41d4-a716-446655440000' })
-  project_id: string;
+  project_id!: string;
 
   @ApiProperty({ example: 'abc12345' })
-  key_prefix: string;
+  key_prefix!: string;
 
   @ApiProperty({ example: '2024-01-01T00:00:00.000Z' })
-  valid_from: Date;
+  valid_from!: Date;
 
   @ApiProperty({ example: null, nullable: true })
-  valid_to: Date | null;
+  valid_to!: Date | null;
 
   @ApiProperty({ example: null, nullable: true })
-  revoked_at: Date | null;
+  revoked_at!: Date | null;
 
   @ApiProperty({ example: '2024-01-01T00:00:00.000Z' })
-  created_at: Date;
+  created_at!: Date;
 }
 
 export function ApiFindMyApiKeys() {

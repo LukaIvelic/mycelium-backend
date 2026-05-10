@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRedis } from '@nestjs-modules/ioredis';
-import { Redis } from 'ioredis';
+import type { Redis } from 'ioredis';
 
 const INCREMENT_SCRIPT = `
   local current = redis.call('INCR', KEYS[1])

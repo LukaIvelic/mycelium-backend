@@ -6,8 +6,8 @@ import {
   ApiQuery,
   ApiResponse,
 } from '@nestjs/swagger';
-import { TokenDto } from './auth.dto';
 import { ValidateUserRateLimitGuard } from '@/modules/auth/auth.guard';
+import { TokenDto } from './auth.dto';
 
 export function ApiSignup() {
   return applyDecorators(

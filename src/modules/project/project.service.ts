@@ -7,13 +7,16 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { and, eq, exists, isNull, notExists, sql } from 'drizzle-orm';
+import { apiKeys, type Project, projects } from '@/database';
 import { DRIZZLE } from '@/database/database.module';
 import type { Database } from '@/database/database.types';
-import { apiKeys, projects, type Project } from '@/database';
-import { ApiKeyService } from '../api-key/api-key.service';
-import { CreateProjectDto, UpdateProjectDto } from './project.dto';
-import type { AddApiKeyToProjectResponse } from './project.dto';
 import { Errors } from '@/lib/constants/errors';
+import { ApiKeyService } from '../api-key/api-key.service';
+import type {
+  AddApiKeyToProjectResponse,
+  CreateProjectDto,
+  UpdateProjectDto,
+} from './project.dto';
 
 const MAX_API_KEYS_PER_USER = 3;
 

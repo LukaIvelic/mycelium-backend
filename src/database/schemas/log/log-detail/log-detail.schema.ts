@@ -1,15 +1,15 @@
+import { sql } from 'drizzle-orm';
 import {
+  type AnyPgColumn,
+  boolean,
+  check,
+  doublePrecision,
+  integer,
+  jsonb,
   pgTable,
   text,
   uuid,
-  integer,
-  boolean,
-  doublePrecision,
-  jsonb,
-  check,
-  type AnyPgColumn,
 } from 'drizzle-orm/pg-core';
-import { sql } from 'drizzle-orm';
 import { logs } from '../log';
 
 const logDetailSchema = {
