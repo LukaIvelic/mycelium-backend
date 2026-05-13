@@ -31,19 +31,27 @@ export class LogService {
     dto: CreateLogDto,
   ): Promise<Log> {
     return this.db.transaction(async (tx) => {
+      const integration = await this.integrationService.upsertFromLog(
+        projectId,
+        apiKeyId,
+        dto,
+        tx,
+      );
+
       const [log] = await tx
         .insert(logs)
         .values({
           projectId,
           apiKeyId,
+          integrationId: integration?.id ?? null,
           traceId: dto.traceId,
           spanId: dto.spanId,
           parentSpanId: dto.parentSpanId ?? null,
-          integrationKey: dto.integrationKey,
+          integrationKey: dto.integrationKey ?? null,
           integrationName: dto.integrationName ?? null,
           integrationVersion: dto.integrationVersion ?? null,
           integrationDescription: dto.integrationDescription ?? null,
-          integrationOrigin: dto.integrationOrigin,
+          integrationOrigin: dto.integrationOrigin ?? null,
           method: dto.method,
           path: dto.path,
           origin: dto.origin,
@@ -53,8 +61,6 @@ export class LogService {
           timestamp: new Date(dto.timestamp),
         })
         .returning();
-
-      await this.integrationService.upsertFromLog(projectId, apiKeyId, dto, tx);
 
       await this.logDetailService.create(tx, log.id, {
         bodySizeKB: dto.bodySizeKB,

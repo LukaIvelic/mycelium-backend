@@ -3,6 +3,10 @@ import type { Integration, Log } from '@/database';
 import type { Edge, FlowDto, Node } from '../flow.dto';
 
 type GraphNode = Node;
+type IntegrationLookup = {
+  byId: Map<string, Integration>;
+  byOrigin: Map<string, Integration>;
+};
 
 /** Builds flow graph DTOs from logs and integrations. */
 @Injectable()
@@ -10,18 +14,15 @@ export class FlowGraphService {
   /**
    * Converts project logs and integrations into a flow graph.
    * @param logs Project logs ordered by timestamp.
-   * @param integrationsByOrigin Integration map keyed by normalized origin.
+   * @param integrations Integration lookup maps for direct ids and origins.
    * @returns The generated flow graph.
    */
-  buildGraph(
-    logs: Log[],
-    integrationsByOrigin: Map<string, Integration>,
-  ): FlowDto {
+  buildGraph(logs: Log[], integrations: IntegrationLookup): FlowDto {
     const nodes = new Map<string, GraphNode>();
     const edges = new Map<string, Edge>();
 
-    this.addIntegrationNodes(nodes, integrationsByOrigin);
-    this.addLogTopology(nodes, edges, logs, integrationsByOrigin);
+    this.addIntegrationNodes(nodes, integrations.byId);
+    this.addLogTopology(nodes, edges, logs, integrations);
 
     return {
       nodes: this.sortNodes(nodes.values()),
@@ -32,14 +33,14 @@ export class FlowGraphService {
   /**
    * Seeds graph nodes from registered integrations.
    * @param nodes Mutable graph node collection.
-   * @param integrationsByOrigin Integrations keyed by normalized origin.
+   * @param integrationsById Integrations keyed by id.
    * @returns Nothing.
    */
   private addIntegrationNodes(
     nodes: Map<string, GraphNode>,
-    integrationsByOrigin: Map<string, Integration>,
+    integrationsById: Map<string, Integration>,
   ): void {
-    for (const integration of integrationsByOrigin.values()) {
+    for (const integration of integrationsById.values()) {
       const node = this.createIntegrationNode(integration);
       nodes.set(node.id, node);
     }
@@ -50,24 +51,24 @@ export class FlowGraphService {
    * @param nodes Mutable graph node collection.
    * @param edges Mutable graph edge collection.
    * @param logs Project logs ordered by timestamp.
-   * @param integrationsByOrigin Integrations keyed by normalized origin.
+   * @param integrations Integration lookup maps for direct ids and origins.
    * @returns Nothing.
    */
   private addLogTopology(
     nodes: Map<string, GraphNode>,
     edges: Map<string, Edge>,
     logs: Log[],
-    integrationsByOrigin: Map<string, Integration>,
+    integrations: IntegrationLookup,
   ): void {
     for (const log of logs) {
-      const sourceNode = this.resolveSourceNode(log, integrationsByOrigin);
+      const sourceNode = this.resolveSourceNode(log, integrations);
       nodes.set(sourceNode.id, sourceNode);
       this.addLogTargetEdge(
         nodes,
         edges,
         log,
         sourceNode,
-        integrationsByOrigin,
+        integrations.byOrigin,
       );
     }
   }
@@ -105,17 +106,22 @@ export class FlowGraphService {
   /**
    * Resolves the graph node that emitted a given log.
    * @param log Source log record.
-   * @param integrationsByOrigin Integrations keyed by normalized origin.
+   * @param integrations Integration lookup maps for direct ids and origins.
    * @returns The source node to use in the graph.
    */
   private resolveSourceNode(
     log: Log,
-    integrationsByOrigin: Map<string, Integration>,
+    integrations: IntegrationLookup,
   ): GraphNode {
+    if (log.integrationId) {
+      const integration = integrations.byId.get(log.integrationId);
+      if (integration) return this.createIntegrationNode(integration);
+    }
+
     const normalizedOrigin = this.normalizeOrigin(log.integrationOrigin);
 
     if (normalizedOrigin) {
-      const integration = integrationsByOrigin.get(normalizedOrigin);
+      const integration = integrations.byOrigin.get(normalizedOrigin);
       if (integration) return this.createIntegrationNode(integration);
       return this.createOriginNode(
         normalizedOrigin,
@@ -223,7 +229,7 @@ export class FlowGraphService {
 
     return {
       id: originId,
-      label: label ?? originLabel ?? origin,
+      label: label ?? originLabel ?? normalizedOrigin,
     };
   }
 

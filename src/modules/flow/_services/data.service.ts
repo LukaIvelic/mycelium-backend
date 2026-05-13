@@ -26,29 +26,35 @@ export class FlowDataService {
       .where(eq(logs.projectId, projectId))
       .orderBy(asc(logs.timestamp));
 
-    const integrationsByOrigin = await this.findIntegrationsByOrigin(projectId);
+    const integrations = await this.findIntegrations(projectId);
 
-    return this.flowGraphService.buildGraph(projectLogs, integrationsByOrigin);
+    return this.flowGraphService.buildGraph(projectLogs, integrations);
   }
 
   /**
-   * Loads integrations for a project and keys them by normalized origin.
+   * Loads integrations for a project and builds lookup maps.
    * @param projectId Project identifier.
-   * @returns A map of integrations keyed by normalized origin.
+   * @returns Integration lookup maps keyed by id and normalized origin.
    */
-  private async findIntegrationsByOrigin(
-    projectId: string,
-  ): Promise<Map<string, Integration>> {
+  private async findIntegrations(projectId: string): Promise<{
+    byId: Map<string, Integration>;
+    byOrigin: Map<string, Integration>;
+  }> {
     const projectIntegrations = await this.db
       .select()
       .from(integrations)
       .where(eq(integrations.projectId, projectId));
 
-    return new Map(
-      projectIntegrations.map((integration) => [
-        integration.normalizedOrigin,
-        integration,
-      ]),
-    );
+    return {
+      byId: new Map(
+        projectIntegrations.map((integration) => [integration.id, integration]),
+      ),
+      byOrigin: new Map(
+        projectIntegrations.map((integration) => [
+          integration.normalizedOrigin,
+          integration,
+        ]),
+      ),
+    };
   }
 }

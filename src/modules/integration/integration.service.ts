@@ -6,7 +6,7 @@ import type { Database } from '@/database/database.types';
 import { Errors } from '@/lib/constants/errors';
 
 interface IntegrationMetadata {
-  integrationOrigin: string;
+  integrationOrigin?: string | null;
   integrationKey?: string | null;
   integrationName?: string | null;
   integrationVersion?: string | null;
@@ -32,8 +32,11 @@ export class IntegrationService {
     apiKeyId: string,
     metadata: IntegrationMetadata,
     tx?: Database,
-  ): Promise<Integration> {
-    const normalizedOrigin = this.normalizeOrigin(metadata.integrationOrigin);
+  ): Promise<Integration | null> {
+    const origin = metadata.integrationOrigin?.trim();
+    if (!origin) return null;
+
+    const normalizedOrigin = this.normalizeOrigin(origin);
     const now = new Date();
 
     const [integration] = await (tx ?? this.db)
@@ -41,7 +44,7 @@ export class IntegrationService {
       .values({
         projectId,
         apiKeyId,
-        origin: metadata.integrationOrigin,
+        origin,
         normalizedOrigin,
         key: metadata.integrationKey ?? null,
         name: metadata.integrationName ?? null,
@@ -54,7 +57,7 @@ export class IntegrationService {
         target: [integrations.projectId, integrations.normalizedOrigin],
         set: {
           apiKeyId,
-          origin: metadata.integrationOrigin,
+          origin,
           key: metadata.integrationKey ?? null,
           name: metadata.integrationName ?? null,
           version: metadata.integrationVersion ?? null,

@@ -79,9 +79,10 @@ export class CreateLogDto {
   @IsString()
   parentSpanId?: string;
 
-  @ApiProperty({ example: 'orders-api' })
+  @ApiProperty({ required: false, nullable: true, example: 'orders-api' })
+  @IsOptional()
   @IsString()
-  integrationKey!: string;
+  integrationKey?: string | null;
 
   @ApiProperty({ required: false, nullable: true, example: 'Orders API' })
   @IsOptional()
@@ -111,9 +112,14 @@ export class CreateLogDto {
   @IsString()
   integrationRepository?: string | null;
 
-  @ApiProperty({ example: 'http://localhost:3003' })
+  @ApiProperty({
+    required: false,
+    nullable: true,
+    example: 'http://localhost:3003',
+  })
+  @IsOptional()
   @IsString()
-  integrationOrigin!: string;
+  integrationOrigin?: string | null;
 
   @ApiProperty({ example: 0.128 })
   @IsNumber()
