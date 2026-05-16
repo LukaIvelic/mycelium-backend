@@ -100,4 +100,30 @@ export class LogService {
       .limit(limit)
       .offset(offset);
   }
+
+  /**
+   * Lists logs for an integration after verifying the caller owns its project.
+   * @param integrationId Integration identifier.
+   * @param userId User requesting the logs.
+   * @param limit Maximum number of logs to return.
+   * @param offset Number of logs to skip.
+   * @returns Logs ordered by newest first.
+   */
+  async findByIntegrationId(
+    integrationId: string,
+    userId: string,
+    limit = 100,
+    offset = 0,
+  ): Promise<Log[]> {
+    const integration = await this.integrationService.findById(integrationId);
+    await this.projectService.findOne(integration.projectId, userId);
+
+    return this.db
+      .select()
+      .from(logs)
+      .where(eq(logs.integrationId, integrationId))
+      .orderBy(desc(logs.timestamp))
+      .limit(limit)
+      .offset(offset);
+  }
 }

@@ -2,6 +2,7 @@ import { applyDecorators, Get, Post, UseGuards } from '@nestjs/common';
 import {
   ApiOAuth2,
   ApiOperation,
+  ApiParam,
   ApiProperty,
   ApiQuery,
   ApiResponse,
@@ -117,5 +118,35 @@ export function ApiListLogs() {
       type: [LogResponse],
     }),
     ApiResponse({ status: 404, description: 'Project not found' }),
+  );
+}
+
+export function ApiListLogsByIntegration() {
+  return applyDecorators(
+    Get('integration/:integrationId'),
+    UseGuards(JwtGuard),
+    ApiOAuth2([]),
+    ApiOperation({
+      summary: 'List logs for an integration owned by the caller',
+    }),
+    ApiParam({ name: 'integrationId', type: 'string', format: 'uuid' }),
+    ApiQuery({
+      name: 'limit',
+      required: false,
+      type: Number,
+      description: 'Page size (1-1000)',
+    }),
+    ApiQuery({
+      name: 'offset',
+      required: false,
+      type: Number,
+      description: 'Page offset',
+    }),
+    ApiResponse({
+      status: 200,
+      description: 'Logs found',
+      type: [LogResponse],
+    }),
+    ApiResponse({ status: 404, description: 'Integration not found' }),
   );
 }

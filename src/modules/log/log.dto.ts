@@ -160,3 +160,20 @@ export class ListLogsQueryDto {
   @Min(0)
   offset?: number;
 }
+
+export class ListIntegrationLogsQueryDto {
+  @ApiProperty({ required: false, example: 100, default: 100 })
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  @Min(1)
+  @Max(1000)
+  limit?: number;
+
+  @ApiProperty({ required: false, example: 0, default: 0 })
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  @Min(0)
+  offset?: number;
+}
