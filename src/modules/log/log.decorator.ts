@@ -27,6 +27,12 @@ export class LogResponse {
   })
   integrationId!: string | null;
 
+  @ApiProperty({
+    example: '550e8400-e29b-41d4-a716-446655440000',
+    nullable: true,
+  })
+  callerIntegrationId!: string | null;
+
   @ApiProperty({ example: 'a1b2c3d4e5f6...' })
   traceId!: string;
 

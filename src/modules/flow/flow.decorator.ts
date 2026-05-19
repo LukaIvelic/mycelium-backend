@@ -21,7 +21,7 @@ export function ApiGetFlow() {
     Get(':projectId'),
     UseGuards(JwtGuard),
     ApiOAuth2([]),
-    ApiOperation({ summary: 'Get or create a flow graph for a project' }),
+    ApiOperation({ summary: 'Get the stored flow graph for a project' }),
     ApiParam({ name: 'projectId', type: 'string', format: 'uuid' }),
     ApiResponse({
       status: 200,

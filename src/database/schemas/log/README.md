@@ -8,6 +8,7 @@ Individual HTTP request/response records captured per project.
 | project_id | uuid NOT NULL | FK -> projects.id |
 | api_key_id | uuid NOT NULL | FK -> api_keys.id |
 | integration_id | uuid | Nullable FK -> integration.id for the emitting microservice |
+| caller_integration_id | uuid | Nullable FK -> integration.id for the caller integration |
 | trace_id | text NOT NULL | Distributed trace identifier |
 | span_id | text NOT NULL | Span identifier within the trace |
 | parent_span_id | text | Parent span, if part of a trace tree |

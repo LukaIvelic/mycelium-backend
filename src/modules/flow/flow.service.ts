@@ -1,10 +1,11 @@
 import { createHash } from 'node:crypto';
 import { Inject, Injectable } from '@nestjs/common';
 import { eq } from 'drizzle-orm';
-import { flows } from '@/database';
+import { flows, type Integration, type Log } from '@/database';
 import { DRIZZLE } from '@/database/database.module';
 import type { Database } from '@/database/database.types';
 import { FlowDataService } from './_services/data.service';
+import { FlowGraphService } from './_services/graph.service';
 import { Edge, FlowDto, Node } from './flow.dto';
 
 /** Reads and persists per-project flow graphs. */
@@ -16,6 +17,7 @@ export class FlowService {
   constructor(
     @Inject(DRIZZLE) private readonly db: Database,
     private readonly flowDataService: FlowDataService,
+    private readonly flowGraphService: FlowGraphService,
   ) {}
 
   /**
@@ -23,9 +25,34 @@ export class FlowService {
    * @param projectId Project whose flow should be synced.
    * @returns A promise that resolves when the flow is up to date.
    */
-  async syncProjectFlow(projectId: string): Promise<void> {
+  async syncProjectFlow(projectId: string, tx?: Database): Promise<void> {
     const graph = await this.flowDataService.buildProjectFlow(projectId);
-    await this.upsertProjectFlow(projectId, graph);
+    await this.upsertProjectFlow(projectId, graph, tx);
+  }
+
+  /**
+   * Merges a newly created log into the stored project flow graph.
+   * @param log Newly created log record.
+   * @param integration Resolved integration that emitted the log.
+   * @param callerIntegration Resolved caller integration for the log origin.
+   * @param tx Optional transaction handle to join an existing write flow.
+   * @returns A promise that resolves when the flow snapshot is updated.
+   */
+  async syncProjectFlowWithLog(
+    log: Log,
+    integration?: Integration | null,
+    callerIntegration?: Integration | null,
+    tx?: Database,
+  ): Promise<void> {
+    const graph = await this.findByProjectId(log.projectId, tx);
+    const nextGraph = this.flowGraphService.mergeLog(
+      graph,
+      log,
+      integration,
+      callerIntegration,
+    );
+
+    await this.upsertProjectFlow(log.projectId, nextGraph, tx);
   }
 
   /**
@@ -33,8 +60,8 @@ export class FlowService {
    * @param projectId Project identifier.
    * @returns The stored nodes and edges, or an empty graph when none exists.
    */
-  async findByProjectId(projectId: string): Promise<FlowDto> {
-    const [graph] = await this.db
+  async findByProjectId(projectId: string, tx?: Database): Promise<FlowDto> {
+    const [graph] = await (tx ?? this.db)
       .select()
       .from(flows)
       .where(eq(flows.projectId, projectId));
@@ -82,10 +109,12 @@ export class FlowService {
   private async upsertProjectFlow(
     projectId: string,
     graph: FlowDto,
+    tx?: Database,
   ): Promise<void> {
+    const database = tx ?? this.db;
     const signature = this.createSignature(graph);
 
-    const [existingFlow] = await this.db
+    const [existingFlow] = await database
       .select({
         signature: flows.signature,
       })
@@ -102,7 +131,7 @@ export class FlowService {
       edges: graph.edges,
     };
 
-    await this.db.insert(flows).values(flowValues).onConflictDoUpdate({
+    await database.insert(flows).values(flowValues).onConflictDoUpdate({
       target: flows.projectId,
       set: flowValues,
     });

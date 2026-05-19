@@ -1,5 +1,5 @@
 import { Inject, Injectable, NotFoundException } from '@nestjs/common';
-import { eq } from 'drizzle-orm';
+import { and, eq } from 'drizzle-orm';
 import { type Integration, integrations } from '@/database';
 import { DRIZZLE } from '@/database/database.module';
 import type { Database } from '@/database/database.types';
@@ -69,6 +69,35 @@ export class IntegrationService {
       .returning();
 
     return integration;
+  }
+
+  /**
+   * Finds an integration for a project by origin using the existing normalization rules.
+   * @param projectId Project identifier.
+   * @param origin Raw origin to resolve.
+   * @param tx Optional transaction handle to join an existing flow.
+   * @returns The matching integration, or `null` when none exists.
+   */
+  async findByProjectIdAndOrigin(
+    projectId: string,
+    origin: string,
+    tx?: Database,
+  ): Promise<Integration | null> {
+    const trimmedOrigin = origin.trim();
+    if (!trimmedOrigin) return null;
+
+    const normalizedOrigin = this.normalizeOrigin(trimmedOrigin);
+    const [integration] = await (tx ?? this.db)
+      .select()
+      .from(integrations)
+      .where(
+        and(
+          eq(integrations.projectId, projectId),
+          eq(integrations.normalizedOrigin, normalizedOrigin),
+        ),
+      );
+
+    return integration ?? null;
   }
 
   /**

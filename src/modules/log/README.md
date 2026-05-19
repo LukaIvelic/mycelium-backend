@@ -14,6 +14,6 @@ Accepts incoming SDK logs and exposes project log listing.
 
 | Function | Visibility | Params | Returns | Description |
 | --- | --- | --- | --- | --- |
-| `create` | public | `projectId: string, apiKeyId: string, dto: CreateLogDto` | `Promise<Log>` | Creates a log, upserts its integration, and writes log detail in one transaction. |
+| `create` | public | `projectId: string, apiKeyId: string, dto: CreateLogDto` | `Promise<Log>` | Creates a log, resolves its current and caller integrations, and writes log detail in one transaction. |
 | `findByIntegrationId` | public | `integrationId: string, userId: string, limit = 100, offset = 0` | `Promise<Log[]>` | Lists logs for an integration after ownership verification. |
 | `findByProjectId` | public | `projectId: string, userId: string, limit = 100, offset = 0` | `Promise<Log[]>` | Lists logs for a project after ownership verification. |

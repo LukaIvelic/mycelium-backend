@@ -24,6 +24,12 @@ const logSchema = {
   integrationId: uuid('integration_id').references(() => integrations.id, {
     onDelete: 'set null',
   }),
+  callerIntegrationId: uuid('caller_integration_id').references(
+    () => integrations.id,
+    {
+      onDelete: 'set null',
+    },
+  ),
   traceId: text('trace_id').notNull(),
   spanId: text('span_id').notNull(),
   parentSpanId: text('parent_span_id'),
@@ -47,6 +53,7 @@ const logSchema = {
 const logChecks = (table: Record<keyof typeof logSchema, AnyPgColumn>) => [
   index('idx_logs_project_timestamp').on(table.projectId, table.timestamp),
   index('idx_logs_integration_id').on(table.integrationId),
+  index('idx_logs_caller_integration_id').on(table.callerIntegrationId),
   index('idx_logs_trace_id').on(table.traceId),
   check('logs_trace_id_length_check', sql`char_length(${table.traceId}) <= 64`),
   check('logs_span_id_length_check', sql`char_length(${table.spanId}) <= 32`),

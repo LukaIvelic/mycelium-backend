@@ -3,6 +3,7 @@ import { desc, eq } from 'drizzle-orm';
 import { type Log, logs } from '@/database';
 import { DRIZZLE } from '@/database/database.module';
 import type { Database } from '@/database/database.types';
+import { FlowService } from '../flow/flow.service';
 import { IntegrationService } from '../integration/integration.service';
 import { LogDetailService } from '../log-detail/log-detail.service';
 import { ProjectService } from '../project/project.service';
@@ -14,6 +15,7 @@ export class LogService {
   constructor(
     @Inject(DRIZZLE) private readonly db: Database,
     private readonly projectService: ProjectService,
+    private readonly flowService: FlowService,
     private readonly integrationService: IntegrationService,
     private readonly logDetailService: LogDetailService,
   ) {}
@@ -37,6 +39,12 @@ export class LogService {
         dto,
         tx,
       );
+      const callerIntegration =
+        await this.integrationService.findByProjectIdAndOrigin(
+          projectId,
+          dto.origin,
+          tx,
+        );
 
       const [log] = await tx
         .insert(logs)
@@ -44,6 +52,7 @@ export class LogService {
           projectId,
           apiKeyId,
           integrationId: integration?.id ?? null,
+          callerIntegrationId: callerIntegration?.id ?? null,
           traceId: dto.traceId,
           spanId: dto.spanId,
           parentSpanId: dto.parentSpanId ?? null,
@@ -72,6 +81,13 @@ export class LogService {
         aborted: dto.aborted,
         idempotent: dto.idempotent,
       });
+
+      await this.flowService.syncProjectFlowWithLog(
+        log,
+        integration,
+        callerIntegration,
+        tx,
+      );
 
       return log;
     });

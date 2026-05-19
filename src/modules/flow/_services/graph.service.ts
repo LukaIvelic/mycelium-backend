@@ -31,6 +31,38 @@ export class FlowGraphService {
   }
 
   /**
+   * Merges a single log into an existing stored flow graph.
+   * @param graph Existing stored flow graph.
+   * @param log Newly created log.
+   * @param integration Resolved integration that emitted the log.
+   * @param callerIntegration Resolved caller integration for the log origin.
+   * @returns The updated graph.
+   */
+  mergeLog(
+    graph: FlowDto,
+    log: Log,
+    integration?: Integration | null,
+    callerIntegration?: Integration | null,
+  ): FlowDto {
+    const nodes = new Map(graph.nodes.map((node) => [node.id, node]));
+    const edges = new Map(graph.edges.map((edge) => [edge.id, edge]));
+
+    const sourceNode = this.resolveStoredSourceNode(log, integration);
+    nodes.set(sourceNode.id, sourceNode);
+
+    const targetNode = this.resolveStoredTargetNode(log, callerIntegration);
+    if (targetNode && sourceNode.id !== targetNode.id) {
+      nodes.set(targetNode.id, targetNode);
+      this.addEdge(edges, sourceNode.id, targetNode.id);
+    }
+
+    return {
+      nodes: this.sortNodes(nodes.values()),
+      edges: this.sortEdges(edges.values()),
+    };
+  }
+
+  /**
    * Seeds graph nodes from registered integrations.
    * @param nodes Mutable graph node collection.
    * @param integrationsById Integrations keyed by id.
@@ -63,44 +95,37 @@ export class FlowGraphService {
     for (const log of logs) {
       const sourceNode = this.resolveSourceNode(log, integrations);
       nodes.set(sourceNode.id, sourceNode);
-      this.addLogTargetEdge(
-        nodes,
-        edges,
-        log,
-        sourceNode,
-        integrations.byOrigin,
-      );
+
+      const targetNode = this.resolveTargetNode(log, integrations);
+      if (!targetNode || sourceNode.id === targetNode.id) continue;
+
+      nodes.set(targetNode.id, targetNode);
+      this.addEdge(edges, sourceNode.id, targetNode.id);
     }
   }
 
   /**
-   * Adds a log-derived edge from a source node to its target origin.
-   * @param nodes Mutable graph node collection.
-   * @param edges Mutable graph edge collection.
+   * Resolves the graph node that emitted a given stored log.
    * @param log Source log record.
-   * @param sourceNode Resolved source node for the log.
-   * @param integrationsByOrigin Integrations keyed by normalized origin.
-   * @returns Nothing.
+   * @param integration Resolved integration that emitted the log.
+   * @returns The source node to use in the graph.
    */
-  private addLogTargetEdge(
-    nodes: Map<string, GraphNode>,
-    edges: Map<string, Edge>,
+  private resolveStoredSourceNode(
     log: Log,
-    sourceNode: GraphNode,
-    integrationsByOrigin: Map<string, Integration>,
-  ): void {
-    const sourceOrigin = this.normalizeOrigin(log.integrationOrigin);
-    const targetOrigin = this.normalizeOrigin(log.origin);
+    integration?: Integration | null,
+  ): GraphNode {
+    if (integration) return this.createIntegrationNode(integration);
 
-    if (!this.canCreateTargetEdge(sourceOrigin, targetOrigin)) return;
+    const normalizedOrigin = this.normalizeOrigin(log.integrationOrigin);
 
-    const targetNode = this.resolveTargetNode(
-      targetOrigin,
-      integrationsByOrigin,
-    );
+    if (normalizedOrigin) {
+      return this.createOriginNode(
+        normalizedOrigin,
+        log.integrationName ?? log.integrationKey,
+      );
+    }
 
-    nodes.set(targetNode.id, targetNode);
-    this.addEdge(edges, sourceNode.id, targetNode.id);
+    return this.createFallbackSourceNode(log);
   }
 
   /**
@@ -133,33 +158,44 @@ export class FlowGraphService {
   }
 
   /**
-   * Resolves the graph node for a target origin.
-   * @param normalizedOrigin Normalized target origin.
-   * @param integrationsByOrigin Integrations keyed by normalized origin.
-   * @returns The target node to use in the graph.
+   * Resolves the graph node for a stored log target.
+   * @param log Source log record.
+   * @param callerIntegration Resolved caller integration for the log origin.
+   * @returns The target node to use in the graph, or `null` when none exists.
    */
-  private resolveTargetNode(
-    normalizedOrigin: string,
-    integrationsByOrigin: Map<string, Integration>,
-  ): GraphNode {
-    const integration = integrationsByOrigin.get(normalizedOrigin);
-    if (integration) return this.createIntegrationNode(integration);
+  private resolveStoredTargetNode(
+    log: Log,
+    callerIntegration?: Integration | null,
+  ): GraphNode | null {
+    if (callerIntegration) return this.createIntegrationNode(callerIntegration);
+
+    const normalizedOrigin = this.normalizeOrigin(log.origin);
+    if (!normalizedOrigin) return null;
+
     return this.createOriginNode(normalizedOrigin);
   }
 
   /**
-   * Checks whether a target edge should be created for two origins.
-   * @param sourceOrigin Normalized source origin.
-   * @param targetOrigin Normalized target origin.
-   * @returns `true` when the edge should be created, otherwise `false`.
+   * Resolves the graph node for a target origin.
+   * @param log Source log record.
+   * @param integrations Integration lookup maps for direct ids and origins.
+   * @returns The target node to use in the graph, or `null` when none exists.
    */
-  private canCreateTargetEdge(
-    sourceOrigin: string,
-    targetOrigin: string,
-  ): boolean {
-    return (
-      Boolean(targetOrigin) && (!sourceOrigin || sourceOrigin !== targetOrigin)
-    );
+  private resolveTargetNode(
+    log: Log,
+    integrations: IntegrationLookup,
+  ): GraphNode | null {
+    if (log.callerIntegrationId) {
+      const integration = integrations.byId.get(log.callerIntegrationId);
+      if (integration) return this.createIntegrationNode(integration);
+    }
+
+    const normalizedOrigin = this.normalizeOrigin(log.origin);
+    if (!normalizedOrigin) return null;
+
+    const integration = integrations.byOrigin.get(normalizedOrigin);
+    if (integration) return this.createIntegrationNode(integration);
+    return this.createOriginNode(normalizedOrigin);
   }
 
   /**

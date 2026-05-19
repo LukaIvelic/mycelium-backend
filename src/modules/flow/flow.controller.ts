@@ -20,7 +20,6 @@ export class FlowController {
     @CurrentUser() userId: string,
   ): Promise<FlowDto> {
     await this.projectService.findOne(projectId, userId);
-    await this.flowService.syncProjectFlow(projectId);
     return this.flowService.findByProjectId(projectId);
   }
 }
