@@ -5,6 +5,7 @@ import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { DatabaseModule } from './database/database.module';
 import { ApiKeyModule } from './modules/api-key/api-key.module';
+import { ApiKeyStatsModule } from './modules/api-key-stats/api-key-stats.module';
 import { AuthModule } from './modules/auth/auth.module';
 import { FlowModule } from './modules/flow/flow.module';
 import { IntegrationModule } from './modules/integration/integration.module';
@@ -29,6 +30,7 @@ const redisModule = RedisModule.forRootAsync({
     UserModule,
     AuthModule,
     ApiKeyModule,
+    ApiKeyStatsModule,
     ProjectModule,
     FlowModule,
     IntegrationModule,

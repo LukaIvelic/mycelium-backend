@@ -1,5 +1,13 @@
-import { Body, Controller, Param, ParseUUIDPipe, Query } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Param,
+  ParseUUIDPipe,
+  Query,
+  Req,
+} from '@nestjs/common';
 import { ApiTags } from '@nestjs/swagger';
+import type { FastifyRequest } from 'fastify';
 import { CurrentUser } from '@/common/decorators/current-user.decorator';
 import type { ApiKey, Log } from '@/database';
 import { CurrentApiKey } from '@/modules/api-key/current-api-key.decorator';
@@ -27,8 +35,9 @@ export class LogController {
   create(
     @Body() dto: CreateLogDto,
     @CurrentApiKey() apiKey: ApiKey,
+    @Req() request: FastifyRequest,
   ): Promise<Log> {
-    return this.logService.create(apiKey.projectId, apiKey.id, dto);
+    return this.logService.create(apiKey.projectId, apiKey.id, dto, request);
   }
 
   @ApiListLogsByIntegration()

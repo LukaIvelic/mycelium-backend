@@ -3,6 +3,8 @@ import { desc, eq } from 'drizzle-orm';
 import { type Log, logs } from '@/database';
 import { DRIZZLE } from '@/database/database.module';
 import type { Database } from '@/database/database.types';
+import type { ApiKeyStatsRequest } from '../api-key-stats/api-key-stats.dto';
+import { ApiKeyStatsService } from '../api-key-stats/api-key-stats.service';
 import { FlowService } from '../flow/flow.service';
 import { IntegrationService } from '../integration/integration.service';
 import { LogDetailService } from '../log-detail/log-detail.service';
@@ -15,6 +17,7 @@ export class LogService {
   constructor(
     @Inject(DRIZZLE) private readonly db: Database,
     private readonly projectService: ProjectService,
+    private readonly apiKeyStatsService: ApiKeyStatsService,
     private readonly flowService: FlowService,
     private readonly integrationService: IntegrationService,
     private readonly logDetailService: LogDetailService,
@@ -25,12 +28,14 @@ export class LogService {
    * @param projectId Project that owns the log.
    * @param apiKeyId API key used to send the log.
    * @param dto Log payload from the SDK.
+   * @param request Incoming log-ingestion request metadata.
    * @returns The created log record.
    */
   async create(
     projectId: string,
     apiKeyId: string,
     dto: CreateLogDto,
+    request: ApiKeyStatsRequest,
   ): Promise<Log> {
     return this.db.transaction(async (tx) => {
       const integration = await this.integrationService.upsertFromLog(
@@ -88,6 +93,8 @@ export class LogService {
         callerIntegration,
         tx,
       );
+
+      await this.apiKeyStatsService.trackLogIngest(apiKeyId, log, request, tx);
 
       return log;
     });

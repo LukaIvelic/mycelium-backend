@@ -70,6 +70,7 @@ export class ProjectService {
    * Lists active projects for a user with an optional API key filter.
    * @param userId Owner identifier.
    * @param hasApiKey Optional filter for projects with or without active keys.
+   * @param sortOptions Optional sorting configuration.
    * @returns Matching active projects.
    */
   async findByUserId(
@@ -196,6 +197,11 @@ export class ProjectService {
     }
   }
 
+  /**
+   * Builds the project list ordering expression from sort options.
+   * @param sortOptions Optional sorting configuration.
+   * @returns The Drizzle SQL ordering expression, or `undefined` when absent.
+   */
   private getProjectOrderBy(sortOptions?: ProjectSortOptions): SQL | undefined {
     if (sortOptions === undefined) return undefined;
 
@@ -206,6 +212,11 @@ export class ProjectService {
     return desc(sortColumn);
   }
 
+  /**
+   * Resolves a project sort field to its database expression.
+   * @param field Requested project sort field.
+   * @returns The database column or expression to sort by.
+   */
   private getProjectSortColumn(field: ProjectSortField) {
     if (field === ProjectSortField.Name) return projects.name;
     if (field === ProjectSortField.RegistrationDate) return projects.createdAt;
