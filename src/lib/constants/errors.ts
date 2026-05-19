@@ -26,6 +26,9 @@ const ProjectErrors = {
   NotFound: (id: string) => `Project ${id} not found`,
   MaxApiKeysReached: 'Maximum of 3 active API keys per user reached',
   InvalidHasApiKeyParam: 'hasApiKey must be true or false',
+  InvalidSortDirectionParam: 'sort must be ASC or DESC',
+  InvalidSortFieldParam:
+    'field must be Name, RegistrationDate, or RecentActivity',
   NotOwner: 'You do not own this project',
 } as const;
 

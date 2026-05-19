@@ -6,7 +6,17 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
-import { and, eq, exists, isNull, notExists, sql } from 'drizzle-orm';
+import type { SQL } from 'drizzle-orm';
+import {
+  and,
+  asc,
+  desc,
+  eq,
+  exists,
+  isNull,
+  notExists,
+  sql,
+} from 'drizzle-orm';
 import { apiKeys, type Project, projects } from '@/database';
 import { DRIZZLE } from '@/database/database.module';
 import type { Database } from '@/database/database.types';
@@ -15,8 +25,10 @@ import { ApiKeyService } from '../api-key/api-key.service';
 import type {
   AddApiKeyToProjectResponse,
   CreateProjectDto,
+  ProjectSortOptions,
   UpdateProjectDto,
 } from './project.dto';
+import { ProjectSortDirection, ProjectSortField } from './project.dto';
 
 const MAX_API_KEYS_PER_USER = 3;
 
@@ -60,7 +72,11 @@ export class ProjectService {
    * @param hasApiKey Optional filter for projects with or without active keys.
    * @returns Matching active projects.
    */
-  async findByUserId(userId: string, hasApiKey?: boolean): Promise<Project[]> {
+  async findByUserId(
+    userId: string,
+    hasApiKey?: boolean,
+    sortOptions?: ProjectSortOptions,
+  ): Promise<Project[]> {
     const activeKeySubquery = this.db
       .select({ one: sql`1` })
       .from(apiKeys)
@@ -75,10 +91,15 @@ export class ProjectService {
       ...(hasApiKey === false ? [notExists(activeKeySubquery)] : []),
     ];
 
-    return this.db
+    const query = this.db
       .select()
       .from(projects)
       .where(and(...conditions));
+    const orderBy = this.getProjectOrderBy(sortOptions);
+
+    if (orderBy === undefined) return query;
+
+    return query.orderBy(orderBy);
   }
 
   /**
@@ -173,5 +194,22 @@ export class ProjectService {
     if (hasNoDefinedValues) {
       throw new BadRequestException(Errors.User.NoUpdateFields);
     }
+  }
+
+  private getProjectOrderBy(sortOptions?: ProjectSortOptions): SQL | undefined {
+    if (sortOptions === undefined) return undefined;
+
+    const sortColumn = this.getProjectSortColumn(sortOptions.field);
+
+    if (sortOptions.sort === ProjectSortDirection.Asc) return asc(sortColumn);
+
+    return desc(sortColumn);
+  }
+
+  private getProjectSortColumn(field: ProjectSortField) {
+    if (field === ProjectSortField.Name) return projects.name;
+    if (field === ProjectSortField.RegistrationDate) return projects.createdAt;
+
+    return sql<Date>`coalesce(${projects.updatedAt}, ${projects.createdAt})`;
   }
 }

@@ -2,6 +2,22 @@ import { ApiProperty, PartialType } from '@nestjs/swagger';
 import { IsOptional, IsString } from 'class-validator';
 import type { PublicApiKey } from '@/database';
 
+export enum ProjectSortDirection {
+  Asc = 'ASC',
+  Desc = 'DESC',
+}
+
+export enum ProjectSortField {
+  Name = 'Name',
+  RecentActivity = 'RecentActivity',
+  RegistrationDate = 'RegistrationDate',
+}
+
+export interface ProjectSortOptions {
+  field: ProjectSortField;
+  sort: ProjectSortDirection;
+}
+
 export class AddApiKeyDto {
   @ApiProperty({ example: 'production key', required: false })
   @IsOptional()

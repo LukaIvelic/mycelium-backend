@@ -17,6 +17,7 @@ import {
 } from '@nestjs/swagger';
 import { JwtGuard } from '@/common/guards/jwt.guard';
 import { ProjectOwnershipGuard } from '@/modules/project/project-ownership.guard';
+import { ProjectSortDirection, ProjectSortField } from './project.dto';
 
 export class ProjectResponse {
   @ApiProperty({ example: '550e8400-e29b-41d4-a716-446655440000' })
@@ -56,6 +57,18 @@ export function ApiFindMyProjects() {
       type: Boolean,
       description:
         'Optional filter: true for projects with an active API key, false for projects without one',
+    }),
+    ApiQuery({
+      name: 'field',
+      required: false,
+      enum: ProjectSortField,
+      description: 'Optional sort field for the project list',
+    }),
+    ApiQuery({
+      name: 'sort',
+      required: false,
+      enum: ProjectSortDirection,
+      description: 'Optional sort direction for the project list',
     }),
     ApiResponse({
       status: 200,

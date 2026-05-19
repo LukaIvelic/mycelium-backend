@@ -24,6 +24,9 @@ import {
   AddApiKeyDto,
   AddApiKeyToProjectResponse,
   CreateProjectDto,
+  ProjectSortDirection,
+  ProjectSortField,
+  type ProjectSortOptions,
   UpdateProjectDto,
 } from './project.dto';
 import { ProjectService } from './project.service';
@@ -37,10 +40,15 @@ export class ProjectController {
   findMine(
     @CurrentUser() userId: string,
     @Query('hasApiKey') hasApiKey?: string,
+    @Query('field') field?: string,
+    @Query('sort') sort?: string,
   ): Promise<Project[]> {
+    const sortOptions = this.parseProjectSortOptions(field, sort);
+
     return this.projectService.findByUserId(
       userId,
       this.parseHasApiKey(hasApiKey),
+      sortOptions,
     );
   }
 
@@ -99,5 +107,40 @@ export class ProjectController {
     if (value === 'true') return true;
     if (value === 'false') return false;
     throw new BadRequestException(Errors.Project.InvalidHasApiKeyParam);
+  }
+
+  private parseProjectSortOptions(
+    field?: string,
+    sort?: string,
+  ): ProjectSortOptions | undefined {
+    if (field === undefined && sort === undefined) return undefined;
+
+    const sortField = field ?? ProjectSortField.RecentActivity;
+    const sortDirection = sort ?? ProjectSortDirection.Desc;
+    this.validateProjectSortField(sortField);
+    this.validateProjectSortDirection(sortDirection);
+
+    return {
+      field: sortField,
+      sort: sortDirection,
+    };
+  }
+
+  private validateProjectSortField(
+    field: string,
+  ): asserts field is ProjectSortField {
+    const fields = Object.values(ProjectSortField);
+    if (fields.includes(field as ProjectSortField)) return;
+
+    throw new BadRequestException(Errors.Project.InvalidSortFieldParam);
+  }
+
+  private validateProjectSortDirection(
+    sort: string,
+  ): asserts sort is ProjectSortDirection {
+    const directions = Object.values(ProjectSortDirection);
+    if (directions.includes(sort as ProjectSortDirection)) return;
+
+    throw new BadRequestException(Errors.Project.InvalidSortDirectionParam);
   }
 }
