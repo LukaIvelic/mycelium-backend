@@ -101,21 +101,54 @@ export class ApiKeyStatsService {
   /**
    * Extracts the client IP from proxy headers or request metadata.
    * @param request Incoming request metadata.
-   * @returns The best available client IP.
+   * @returns The best available public client IP.
    */
   private extractIp(request: ApiKeyStatsRequest): string {
+    const directIp =
+      this.getHeader(request, 'cf-connecting-ip') ??
+      this.getHeader(request, 'x-real-ip') ??
+      this.getHeader(request, 'x-client-ip') ??
+      this.getHeader(request, 'true-client-ip');
+
+    if (directIp) {
+      return directIp.trim();
+    }
+
     const forwardedFor = this.getHeader(request, 'x-forwarded-for');
+
     if (forwardedFor) {
-      return forwardedFor.split(',')[0]?.trim() || UNKNOWN_VALUE;
+      const firstPublicIp = forwardedFor
+        .split(',')
+        .map((ip) => ip.trim())
+        .find((ip) => !this.isPrivateIp(ip));
+
+      return (
+        firstPublicIp ?? forwardedFor.split(',')[0]?.trim() ?? UNKNOWN_VALUE
+      );
     }
 
     return (
-      this.getHeader(request, 'cf-connecting-ip') ??
-      this.getHeader(request, 'x-real-ip') ??
+      request.ips?.find((ip) => !this.isPrivateIp(ip)) ??
       request.ips?.[0] ??
       request.ip ??
       request.socket?.remoteAddress ??
       UNKNOWN_VALUE
+    );
+  }
+
+  /**
+   * Checks whether an IP address belongs to a private or internal range.
+   * @param ip IP address to validate.
+   * @returns `true` when the IP is private or internal.
+   */
+  private isPrivateIp(ip: string): boolean {
+    return (
+      ip === '127.0.0.1' ||
+      ip === '::1' ||
+      ip.startsWith('10.') ||
+      ip.startsWith('192.168.') ||
+      /^172\.(1[6-9]|2\d|3[0-1])\./.test(ip) ||
+      /^100\.(6[4-9]|[7-9]\d|1[01]\d|12[0-7])\./.test(ip)
     );
   }
 
@@ -152,4 +185,3 @@ export class ApiKeyStatsService {
     return value;
   }
 }
-
