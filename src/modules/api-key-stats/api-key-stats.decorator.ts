@@ -24,8 +24,29 @@ export class ApiKeyIpStatsResponse {
   @ApiProperty({ example: 12 })
   requestCount!: number;
 
-  @ApiProperty({ example: 'HR' })
+  @ApiProperty({ example: 'Croatia' })
   country!: string;
+
+  @ApiProperty({
+    nullable: true,
+    example: {
+      query: '188.252.186.113',
+      status: 'success',
+      country: 'Croatia',
+      countryCode: 'HR',
+      region: '21',
+      regionName: 'City of Zagreb',
+      city: 'Zagreb',
+      zip: '10000',
+      lat: 45.8293,
+      lon: 15.9793,
+      timezone: 'Europe/Zagreb',
+      isp: 'XNET',
+      org: '',
+      as: 'AS31012 A1 Hrvatska d.o.o.',
+    },
+  })
+  detailed!: unknown | null;
 }
 
 export class ApiKeyStatsResponse {

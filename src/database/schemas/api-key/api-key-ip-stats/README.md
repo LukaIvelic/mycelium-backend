@@ -10,3 +10,4 @@ Per-IP usage statistics for each API key.
 | last_seen | timestamptz NOT NULL | Most recent request from this IP |
 | request_count | integer NOT NULL | Total requests from this IP |
 | country | text NOT NULL | Resolved country of the IP |
+| detailed | jsonb | Full IP lookup payload when resolved from the external IP API |

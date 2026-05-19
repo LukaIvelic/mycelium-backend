@@ -7,6 +7,25 @@ import { ProjectService } from '../project/project.service';
 import type { ApiKeyStatsDto, ApiKeyStatsRequest } from './api-key-stats.dto';
 
 const UNKNOWN_VALUE = 'unknown';
+const IP_API_BASE_URL = 'http://ip-api.com/json';
+const IP_API_TIMEOUT_MS = 1_500;
+
+interface IpApiDetails {
+  query: string;
+  status: string;
+  country?: string;
+  countryCode?: string;
+  region?: string;
+  regionName?: string;
+  city?: string;
+  zip?: string;
+  lat?: number;
+  lon?: number;
+  timezone?: string;
+  isp?: string;
+  org?: string;
+  as?: string;
+}
 
 /** Tracks and reads API key usage statistics. */
 @Injectable()
@@ -33,7 +52,13 @@ export class ApiKeyStatsService {
     const database = tx ?? this.db;
     const now = new Date();
     const ip = this.extractIp(request);
-    const country = this.extractCountry(request);
+    const { country, detailed } = await this.extractCountry(request, ip);
+    const updateValues = {
+      lastSeen: now,
+      requestCount: sql`${apiKeyIpStats.requestCount} + 1`,
+      country,
+      ...(detailed ? { detailed } : {}),
+    };
 
     await database
       .update(apiKeys)
@@ -53,14 +78,11 @@ export class ApiKeyStatsService {
         lastSeen: now,
         requestCount: 1,
         country,
+        detailed,
       })
       .onConflictDoUpdate({
         target: [apiKeyIpStats.apiKeyId, apiKeyIpStats.ip],
-        set: {
-          lastSeen: now,
-          requestCount: sql`${apiKeyIpStats.requestCount} + 1`,
-          country,
-        },
+        set: updateValues,
       });
   }
 
@@ -153,20 +175,57 @@ export class ApiKeyStatsService {
   }
 
   /**
-   * Extracts the country code from common platform headers.
+   * Extracts the country from headers or resolves it with the IP API.
    * @param request Incoming request metadata.
-   * @returns The country code, or `unknown` when absent.
+   * @param ip Client IP address to resolve when no country header exists.
+   * @returns The country and full IP lookup details when available.
    */
-  private extractCountry(request: ApiKeyStatsRequest): string {
+  private async extractCountry(
+    request: ApiKeyStatsRequest,
+    ip: string,
+  ): Promise<{ country: string; detailed: IpApiDetails | null }> {
     const country =
       this.getHeader(request, 'cf-ipcountry') ??
       this.getHeader(request, 'x-vercel-ip-country') ??
       this.getHeader(request, 'x-country-code') ??
       this.getHeader(request, 'cloudfront-viewer-country');
 
-    console.log(request.headers);
+    if (country) {
+      return { country: country.trim().toUpperCase(), detailed: null };
+    }
 
-    return country?.trim().toUpperCase() || UNKNOWN_VALUE;
+    const detailed = await this.findCountryByIp(ip);
+
+    return {
+      country: detailed?.country ?? detailed?.countryCode ?? UNKNOWN_VALUE,
+      detailed,
+    };
+  }
+
+  /**
+   * Resolves IP location details from the external IP API.
+   * @param ip Client IP address to resolve.
+   * @returns The IP API payload, or `null` when lookup fails.
+   */
+  private async findCountryByIp(ip: string): Promise<IpApiDetails | null> {
+    if (ip === UNKNOWN_VALUE || this.isPrivateIp(ip)) return null;
+
+    try {
+      const response = await fetch(
+        `${IP_API_BASE_URL}/${encodeURIComponent(ip)}`,
+        {
+          signal: AbortSignal.timeout(IP_API_TIMEOUT_MS),
+        },
+      );
+      if (!response.ok) return null;
+
+      const detailed = (await response.json()) as IpApiDetails;
+      if (detailed.status !== 'success') return null;
+
+      return detailed;
+    } catch {
+      return null;
+    }
   }
 
   /**

@@ -1,6 +1,7 @@
 import {
   type AnyPgColumn,
   integer,
+  jsonb,
   pgTable,
   primaryKey,
   text,
@@ -18,6 +19,7 @@ const apiKeyIpStatsSchema = {
   lastSeen: timestamp('last_seen', { withTimezone: true }).notNull(),
   requestCount: integer('request_count').notNull(),
   country: text('country').notNull(),
+  detailed: jsonb('detailed'),
 };
 
 const apiKeyIpStatsChecks = (
