@@ -18,7 +18,15 @@ const redisModule = RedisModule.forRootAsync({
   inject: [ConfigService],
   useFactory: (config: ConfigService) => ({
     type: 'single' as const,
-    url: config.get<string>('REDIS_URL'),
+    options: {
+      host: config.get<string>('REDISHOST'),
+      port: config.get<number>('REDISPORT'),
+      username: config.get<string>('REDISUSER'),
+      password: config.get<string>('REDISPASSWORD'),
+      connectTimeout: 10000,
+      commandTimeout: 5000,
+      retryStrategy: (times: number) => Math.min(times * 200, 2000),
+    },
   }),
 });
 
