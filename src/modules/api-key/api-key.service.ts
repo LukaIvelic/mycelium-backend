@@ -2,21 +2,16 @@ import * as crypto from 'node:crypto';
 import {
   ConflictException,
   ForbiddenException,
-  Inject,
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { and, desc, eq, getTableColumns, isNull, sql } from 'drizzle-orm';
 import { BloomService } from '@/common/cache/bloom.service';
 import { LocalCacheService } from '@/common/cache/local-cache.service';
 import { RedisCacheService } from '@/common/cache/redis-cache.service';
-import { type ApiKey, apiKeys, type PublicApiKey, projects } from '@/database';
-import { DRIZZLE } from '@/database/database.module';
-import type { Database } from '@/database/database.types';
+import type { ApiKey, PublicApiKey } from '@/database';
 import { Errors } from '@/lib/constants/errors';
-
-const { keyHash: _keyHash, ...publicApiKeyColumns } = getTableColumns(apiKeys);
+import { ApiKeyRepository } from './api-key.repository';
 
 /** Manages API key validation, caching, creation, and revocation. */
 @Injectable()
@@ -28,7 +23,7 @@ export class ApiKeyService {
   private readonly cachePrefix = 'apikey:';
 
   constructor(
-    @Inject(DRIZZLE) private readonly db: Database,
+    private readonly apiKeyRepository: ApiKeyRepository,
     private readonly bloom: BloomService,
     private readonly localCache: LocalCacheService<ApiKey>,
     private readonly redisCache: RedisCacheService<ApiKey>,
@@ -98,12 +93,7 @@ export class ApiKeyService {
    * @returns The active API key, or `null` when not found.
    */
   private async checkDatabase(hash: string): Promise<ApiKey | null> {
-    const [key] = await this.db
-      .select()
-      .from(apiKeys)
-      .where(and(eq(apiKeys.keyHash, hash), isNull(apiKeys.revokedAt)));
-
-    const result = key ?? null;
+    const result = await this.apiKeyRepository.findActiveByHash(hash);
     const ttl = result ? this.ttlValid : this.ttlInvalid;
     await this.redisCache.set(hash, this.cachePrefix, result, ttl);
     this.localCache.set(hash, result);
@@ -130,24 +120,19 @@ export class ApiKeyService {
     projectId: string,
     name?: string,
   ): Promise<{ key: string; message: string; entity: PublicApiKey }> {
-    const [existing] = await this.db
-      .select()
-      .from(apiKeys)
-      .where(and(eq(apiKeys.projectId, projectId), isNull(apiKeys.revokedAt)));
+    const existing =
+      await this.apiKeyRepository.findActiveByProjectId(projectId);
     if (existing) throw new ConflictException(Errors.ApiKey.ActiveKeyConflict);
 
     const rawKey = crypto.randomBytes(this.apiKeyBytes).toString('hex');
     const hash = this.hash(rawKey);
 
-    const [entity] = await this.db
-      .insert(apiKeys)
-      .values({
-        projectId,
-        name: name ?? '',
-        keyPrefix: rawKey.slice(0, this.apiKeyPrefixLength),
-        keyHash: hash,
-      })
-      .returning(publicApiKeyColumns);
+    const entity = await this.apiKeyRepository.insert({
+      projectId,
+      name: name ?? '',
+      keyPrefix: rawKey.slice(0, this.apiKeyPrefixLength),
+      keyHash: hash,
+    });
 
     this.bloom.add(hash);
 
@@ -165,11 +150,7 @@ export class ApiKeyService {
    * @returns A promise that resolves when the key is revoked.
    */
   async revokeApiKey(apiKeyId: string, userId: string): Promise<void> {
-    const [row] = await this.db
-      .select({ apiKey: apiKeys, ownerId: projects.userId })
-      .from(apiKeys)
-      .innerJoin(projects, eq(apiKeys.projectId, projects.id))
-      .where(and(eq(apiKeys.id, apiKeyId), isNull(apiKeys.revokedAt)));
+    const row = await this.apiKeyRepository.findActiveWithOwner(apiKeyId);
 
     if (!row) throw new NotFoundException(Errors.ApiKey.NotFound(apiKeyId));
     if (row.ownerId !== userId)
@@ -178,11 +159,7 @@ export class ApiKeyService {
     this.bloom.remove(row.apiKey.keyHash);
     this.localCache.delete(row.apiKey.keyHash);
     await this.redisCache.delete(row.apiKey.keyHash, this.cachePrefix);
-    const now = new Date();
-    await this.db
-      .update(apiKeys)
-      .set({ revokedAt: now, validTo: now })
-      .where(eq(apiKeys.id, row.apiKey.id));
+    await this.apiKeyRepository.revoke(row.apiKey.id, new Date());
   }
 
   /**
@@ -191,13 +168,9 @@ export class ApiKeyService {
    * @returns The project that owns the API key.
    */
   async getProjectByApiKeyId(apiKeyId: string) {
-    const [row] = await this.db
-      .select({ project: projects })
-      .from(apiKeys)
-      .innerJoin(projects, eq(apiKeys.projectId, projects.id))
-      .where(eq(apiKeys.id, apiKeyId));
-    if (!row) throw new NotFoundException(Errors.ApiKey.NotFound(apiKeyId));
-    return row.project;
+    const project = await this.apiKeyRepository.findProjectById(apiKeyId);
+    if (!project) throw new NotFoundException(Errors.ApiKey.NotFound(apiKeyId));
+    return project;
   }
 
   /**
@@ -206,13 +179,7 @@ export class ApiKeyService {
    * @returns Public API key records ordered by creation time.
    */
   async findByUserId(userId: string): Promise<PublicApiKey[]> {
-    const rows = await this.db
-      .select({ apiKey: publicApiKeyColumns })
-      .from(apiKeys)
-      .innerJoin(projects, eq(apiKeys.projectId, projects.id))
-      .where(and(eq(projects.userId, userId), isNull(apiKeys.revokedAt)))
-      .orderBy(desc(apiKeys.createdAt));
-    return rows.map((r) => r.apiKey);
+    return this.apiKeyRepository.findPublicActiveByUserId(userId);
   }
 
   /**
@@ -221,11 +188,8 @@ export class ApiKeyService {
    * @returns `true` when an active key exists, otherwise `false`.
    */
   async hasActiveApiKeyForProject(projectId: string): Promise<boolean> {
-    const [row] = await this.db
-      .select({ count: sql<number>`count(*)::int` })
-      .from(apiKeys)
-      .where(and(eq(apiKeys.projectId, projectId), isNull(apiKeys.revokedAt)));
-    return (row?.count ?? 0) > 0;
+    const count = await this.apiKeyRepository.countActiveByProjectId(projectId);
+    return count > 0;
   }
 
   /**
@@ -234,11 +198,6 @@ export class ApiKeyService {
    * @returns The number of active keys.
    */
   async countActiveKeysForUser(userId: string): Promise<number> {
-    const [row] = await this.db
-      .select({ count: sql<number>`count(*)::int` })
-      .from(apiKeys)
-      .innerJoin(projects, eq(apiKeys.projectId, projects.id))
-      .where(and(eq(projects.userId, userId), isNull(apiKeys.revokedAt)));
-    return row?.count ?? 0;
+    return this.apiKeyRepository.countActiveByUserId(userId);
   }
 }

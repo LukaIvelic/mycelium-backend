@@ -1,16 +1,14 @@
-import { Inject, Injectable } from '@nestjs/common';
-import { asc, eq } from 'drizzle-orm';
-import { type Integration, integrations, logs } from '@/database';
-import { DRIZZLE } from '@/database/database.module';
-import type { Database } from '@/database/database.types';
+import { Injectable } from '@nestjs/common';
+import type { Integration } from '@/database';
 import type { FlowDto } from '../flow.dto';
+import { FlowRepository } from '../flow.repository';
 import { FlowGraphService } from './graph.service';
 
 /** Loads the data needed to build a project's flow graph. */
 @Injectable()
 export class FlowDataService {
   constructor(
-    @Inject(DRIZZLE) private readonly db: Database,
+    private readonly flowRepository: FlowRepository,
     private readonly flowGraphService: FlowGraphService,
   ) {}
 
@@ -20,11 +18,8 @@ export class FlowDataService {
    * @returns The computed flow graph.
    */
   async buildProjectFlow(projectId: string): Promise<FlowDto> {
-    const projectLogs = await this.db
-      .select()
-      .from(logs)
-      .where(eq(logs.projectId, projectId))
-      .orderBy(asc(logs.timestamp));
+    const projectLogs =
+      await this.flowRepository.findProjectLogsOrderedAsc(projectId);
 
     const integrations = await this.findIntegrations(projectId);
 
@@ -40,10 +35,8 @@ export class FlowDataService {
     byId: Map<string, Integration>;
     byOrigin: Map<string, Integration>;
   }> {
-    const projectIntegrations = await this.db
-      .select()
-      .from(integrations)
-      .where(eq(integrations.projectId, projectId));
+    const projectIntegrations =
+      await this.flowRepository.findProjectIntegrations(projectId);
 
     return {
       byId: new Map(

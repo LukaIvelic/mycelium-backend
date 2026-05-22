@@ -1,9 +1,8 @@
-import { Inject, Injectable, NotFoundException } from '@nestjs/common';
-import { and, eq } from 'drizzle-orm';
-import { type Integration, integrations } from '@/database';
-import { DRIZZLE } from '@/database/database.module';
+import { Injectable, NotFoundException } from '@nestjs/common';
+import type { Integration } from '@/database';
 import type { Database } from '@/database/database.types';
 import { Errors } from '@/lib/constants/errors';
+import { IntegrationRepository } from './integration.repository';
 
 interface IntegrationMetadata {
   integrationOrigin?: string | null;
@@ -17,7 +16,7 @@ interface IntegrationMetadata {
 /** Loads integration records from the database. */
 @Injectable()
 export class IntegrationService {
-  constructor(@Inject(DRIZZLE) private readonly db: Database) {}
+  constructor(private readonly integrationRepository: IntegrationRepository) {}
 
   /**
    * Inserts or updates an integration derived from log metadata.
@@ -39,36 +38,26 @@ export class IntegrationService {
     const normalizedOrigin = this.normalizeOrigin(origin);
     const now = new Date();
 
-    const [integration] = await (tx ?? this.db)
-      .insert(integrations)
-      .values({
-        projectId,
-        apiKeyId,
-        origin,
-        normalizedOrigin,
-        key: metadata.integrationKey ?? null,
-        name: metadata.integrationName ?? null,
-        version: metadata.integrationVersion ?? null,
-        description: metadata.integrationDescription ?? null,
-        repository: metadata.integrationRepository ?? null,
-        updatedAt: now,
-      })
-      .onConflictDoUpdate({
-        target: [integrations.projectId, integrations.normalizedOrigin],
-        set: {
-          apiKeyId,
-          origin,
-          key: metadata.integrationKey ?? null,
-          name: metadata.integrationName ?? null,
-          version: metadata.integrationVersion ?? null,
-          description: metadata.integrationDescription ?? null,
-          repository: metadata.integrationRepository ?? null,
-          updatedAt: now,
-        },
-      })
-      .returning();
+    const sharedValues = {
+      apiKeyId,
+      origin,
+      key: metadata.integrationKey ?? null,
+      name: metadata.integrationName ?? null,
+      version: metadata.integrationVersion ?? null,
+      description: metadata.integrationDescription ?? null,
+      repository: metadata.integrationRepository ?? null,
+      updatedAt: now,
+    };
 
-    return integration;
+    return this.integrationRepository.upsert(
+      {
+        projectId,
+        normalizedOrigin,
+        ...sharedValues,
+      },
+      sharedValues,
+      tx,
+    );
   }
 
   /**
@@ -87,17 +76,11 @@ export class IntegrationService {
     if (!trimmedOrigin) return null;
 
     const normalizedOrigin = this.normalizeOrigin(trimmedOrigin);
-    const [integration] = await (tx ?? this.db)
-      .select()
-      .from(integrations)
-      .where(
-        and(
-          eq(integrations.projectId, projectId),
-          eq(integrations.normalizedOrigin, normalizedOrigin),
-        ),
-      );
-
-    return integration ?? null;
+    return this.integrationRepository.findByProjectIdAndNormalizedOrigin(
+      projectId,
+      normalizedOrigin,
+      tx,
+    );
   }
 
   /**
@@ -106,15 +89,10 @@ export class IntegrationService {
    * @returns The matching integration record.
    */
   async findById(id: string): Promise<Integration> {
-    const [integration] = await this.db
-      .select()
-      .from(integrations)
-      .where(eq(integrations.id, id));
-
+    const integration = await this.integrationRepository.findById(id);
     if (!integration) {
       throw new NotFoundException(Errors.Integration.NotFound(id));
     }
-
     return integration;
   }
 

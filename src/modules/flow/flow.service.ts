@@ -1,12 +1,11 @@
 import { createHash } from 'node:crypto';
-import { Inject, Injectable } from '@nestjs/common';
-import { eq } from 'drizzle-orm';
-import { flows, type Integration, type Log } from '@/database';
-import { DRIZZLE } from '@/database/database.module';
+import { Injectable } from '@nestjs/common';
+import type { Integration, Log } from '@/database';
 import type { Database } from '@/database/database.types';
 import { FlowDataService } from './_services/data.service';
 import { FlowGraphService } from './_services/graph.service';
 import { Edge, FlowDto, Node } from './flow.dto';
+import { FlowRepository } from './flow.repository';
 
 /** Reads and persists per-project flow graphs. */
 @Injectable()
@@ -15,7 +14,7 @@ export class FlowService {
   private readonly emptyEdges: Edge[] = [];
 
   constructor(
-    @Inject(DRIZZLE) private readonly db: Database,
+    private readonly flowRepository: FlowRepository,
     private readonly flowDataService: FlowDataService,
     private readonly flowGraphService: FlowGraphService,
   ) {}
@@ -61,14 +60,11 @@ export class FlowService {
    * @returns The stored nodes and edges, or an empty graph when none exists.
    */
   async findByProjectId(projectId: string, tx?: Database): Promise<FlowDto> {
-    const [graph] = await (tx ?? this.db)
-      .select()
-      .from(flows)
-      .where(eq(flows.projectId, projectId));
+    const flow = await this.flowRepository.findByProjectId(projectId, tx);
 
     return {
-      nodes: (graph?.nodes as Node[]) ?? this.emptyNodes,
-      edges: (graph?.edges as Edge[]) ?? this.emptyEdges,
+      nodes: (flow?.nodes as Node[]) ?? this.emptyNodes,
+      edges: (flow?.edges as Edge[]) ?? this.emptyEdges,
     };
   }
 
@@ -111,29 +107,21 @@ export class FlowService {
     graph: FlowDto,
     tx?: Database,
   ): Promise<void> {
-    const database = tx ?? this.db;
     const signature = this.createSignature(graph);
 
-    const [existingFlow] = await database
-      .select({
-        signature: flows.signature,
-      })
-      .from(flows)
-      .where(eq(flows.projectId, projectId));
+    const existingSignature =
+      await this.flowRepository.findSignatureByProjectId(projectId, tx);
 
-    const hasSameSignature = existingFlow?.signature === signature;
-    if (hasSameSignature) return;
+    if (existingSignature === signature) return;
 
-    const flowValues = {
-      projectId: projectId,
-      signature: signature,
-      nodes: graph.nodes,
-      edges: graph.edges,
-    };
-
-    await database.insert(flows).values(flowValues).onConflictDoUpdate({
-      target: flows.projectId,
-      set: flowValues,
-    });
+    await this.flowRepository.upsert(
+      {
+        projectId,
+        signature,
+        nodes: graph.nodes,
+        edges: graph.edges,
+      },
+      tx,
+    );
   }
 }

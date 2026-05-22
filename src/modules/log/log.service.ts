@@ -1,6 +1,5 @@
 import { Inject, Injectable } from '@nestjs/common';
-import { desc, eq } from 'drizzle-orm';
-import { type Log, logs } from '@/database';
+import type { Log } from '@/database';
 import { DRIZZLE } from '@/database/database.module';
 import type { Database } from '@/database/database.types';
 import type { ApiKeyStatsRequest } from '../api-key-stats/api-key-stats.dto';
@@ -10,12 +9,14 @@ import { IntegrationService } from '../integration/integration.service';
 import { LogDetailService } from '../log-detail/log-detail.service';
 import { ProjectService } from '../project/project.service';
 import type { CreateLogDto } from './log.dto';
+import { LogRepository } from './log.repository';
 
 /** Creates logs and lists them for authorized project owners. */
 @Injectable()
 export class LogService {
   constructor(
     @Inject(DRIZZLE) private readonly db: Database,
+    private readonly logRepository: LogRepository,
     private readonly projectService: ProjectService,
     private readonly apiKeyStatsService: ApiKeyStatsService,
     private readonly flowService: FlowService,
@@ -51,9 +52,8 @@ export class LogService {
           tx,
         );
 
-      const [log] = await tx
-        .insert(logs)
-        .values({
+      const log = await this.logRepository.insert(
+        {
           projectId,
           apiKeyId,
           integrationId: integration?.id ?? null,
@@ -73,8 +73,9 @@ export class LogService {
           statusCode: dto.statusCode,
           durationMs: dto.durationMs,
           timestamp: new Date(dto.timestamp),
-        })
-        .returning();
+        },
+        tx,
+      );
 
       await this.logDetailService.create(tx, log.id, {
         bodySizeKB: dto.bodySizeKB,
@@ -115,13 +116,7 @@ export class LogService {
     offset = 0,
   ): Promise<Log[]> {
     await this.projectService.findOne(projectId, userId);
-    return this.db
-      .select()
-      .from(logs)
-      .where(eq(logs.projectId, projectId))
-      .orderBy(desc(logs.timestamp))
-      .limit(limit)
-      .offset(offset);
+    return this.logRepository.findByProjectId(projectId, limit, offset);
   }
 
   /**
@@ -141,12 +136,6 @@ export class LogService {
     const integration = await this.integrationService.findById(integrationId);
     await this.projectService.findOne(integration.projectId, userId);
 
-    return this.db
-      .select()
-      .from(logs)
-      .where(eq(logs.integrationId, integrationId))
-      .orderBy(desc(logs.timestamp))
-      .limit(limit)
-      .offset(offset);
+    return this.logRepository.findByIntegrationId(integrationId, limit, offset);
   }
 }

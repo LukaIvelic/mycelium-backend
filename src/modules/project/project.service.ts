@@ -2,24 +2,10 @@ import {
   BadRequestException,
   ConflictException,
   ForbiddenException,
-  Inject,
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
-import type { SQL } from 'drizzle-orm';
-import {
-  and,
-  asc,
-  desc,
-  eq,
-  exists,
-  isNull,
-  notExists,
-  sql,
-} from 'drizzle-orm';
-import { apiKeys, type Project, projects } from '@/database';
-import { DRIZZLE } from '@/database/database.module';
-import type { Database } from '@/database/database.types';
+import type { Project } from '@/database';
 import { Errors } from '@/lib/constants/errors';
 import { ApiKeyService } from '../api-key/api-key.service';
 import type {
@@ -28,7 +14,7 @@ import type {
   ProjectSortOptions,
   UpdateProjectDto,
 } from './project.dto';
-import { ProjectSortDirection, ProjectSortField } from './project.dto';
+import { ProjectRepository } from './project.repository';
 
 const MAX_API_KEYS_PER_USER = 3;
 
@@ -36,7 +22,7 @@ const MAX_API_KEYS_PER_USER = 3;
 @Injectable()
 export class ProjectService {
   constructor(
-    @Inject(DRIZZLE) private readonly db: Database,
+    private readonly projectRepository: ProjectRepository,
     private readonly apiKeyService: ApiKeyService,
   ) {}
 
@@ -47,10 +33,7 @@ export class ProjectService {
    * @returns The matching active project.
    */
   async findOne(id: string, userId: string): Promise<Project> {
-    const [project] = await this.db
-      .select()
-      .from(projects)
-      .where(and(eq(projects.id, id), isNull(projects.validTo)));
+    const project = await this.projectRepository.findActiveById(id);
     if (!project) throw new NotFoundException(Errors.Project.NotFound(id));
     if (project.userId !== userId)
       throw new ForbiddenException(Errors.Project.NotOwner);
@@ -78,29 +61,11 @@ export class ProjectService {
     hasApiKey?: boolean,
     sortOptions?: ProjectSortOptions,
   ): Promise<Project[]> {
-    const activeKeySubquery = this.db
-      .select({ one: sql`1` })
-      .from(apiKeys)
-      .where(
-        and(eq(apiKeys.projectId, projects.id), isNull(apiKeys.revokedAt)),
-      );
-
-    const conditions = [
-      eq(projects.userId, userId),
-      isNull(projects.validTo),
-      ...(hasApiKey === true ? [exists(activeKeySubquery)] : []),
-      ...(hasApiKey === false ? [notExists(activeKeySubquery)] : []),
-    ];
-
-    const query = this.db
-      .select()
-      .from(projects)
-      .where(and(...conditions));
-    const orderBy = this.getProjectOrderBy(sortOptions);
-
-    if (orderBy === undefined) return query;
-
-    return query.orderBy(orderBy);
+    return this.projectRepository.findActiveByUserId(
+      userId,
+      hasApiKey,
+      sortOptions,
+    );
   }
 
   /**
@@ -123,15 +88,11 @@ export class ProjectService {
    * @returns The created project.
    */
   async create(dto: CreateProjectDto, userId: string): Promise<Project> {
-    const [project] = await this.db
-      .insert(projects)
-      .values({
-        name: dto.name,
-        description: dto.description,
-        userId,
-      })
-      .returning();
-    return project;
+    return this.projectRepository.insert({
+      name: dto.name,
+      description: dto.description,
+      userId,
+    });
   }
 
   /**
@@ -143,12 +104,10 @@ export class ProjectService {
   async update(project: Project, dto: UpdateProjectDto): Promise<Project> {
     this.validate(dto);
 
-    const data = {
+    await this.projectRepository.update(project.id, {
       ...dto,
       updatedAt: new Date(),
-    };
-
-    await this.db.update(projects).set(data).where(eq(projects.id, project.id));
+    });
 
     return this.findOne(project.id, project.userId);
   }
@@ -159,10 +118,7 @@ export class ProjectService {
    * @returns A promise that resolves when the project is archived.
    */
   async delete(project: Project): Promise<void> {
-    await this.db
-      .update(projects)
-      .set({ validTo: new Date() })
-      .where(eq(projects.id, project.id));
+    await this.projectRepository.softDelete(project.id);
   }
 
   /**
@@ -195,32 +151,5 @@ export class ProjectService {
     if (hasNoDefinedValues) {
       throw new BadRequestException(Errors.User.NoUpdateFields);
     }
-  }
-
-  /**
-   * Builds the project list ordering expression from sort options.
-   * @param sortOptions Optional sorting configuration.
-   * @returns The Drizzle SQL ordering expression, or `undefined` when absent.
-   */
-  private getProjectOrderBy(sortOptions?: ProjectSortOptions): SQL | undefined {
-    if (sortOptions === undefined) return undefined;
-
-    const sortColumn = this.getProjectSortColumn(sortOptions.field);
-
-    if (sortOptions.sort === ProjectSortDirection.Asc) return asc(sortColumn);
-
-    return desc(sortColumn);
-  }
-
-  /**
-   * Resolves a project sort field to its database expression.
-   * @param field Requested project sort field.
-   * @returns The database column or expression to sort by.
-   */
-  private getProjectSortColumn(field: ProjectSortField) {
-    if (field === ProjectSortField.Name) return projects.name;
-    if (field === ProjectSortField.RegistrationDate) return projects.createdAt;
-
-    return sql<Date>`coalesce(${projects.updatedAt}, ${projects.createdAt})`;
   }
 }

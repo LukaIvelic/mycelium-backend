@@ -1,37 +1,23 @@
-import { Inject, Injectable } from '@nestjs/common';
-import { desc, eq, sql } from 'drizzle-orm';
-import { apiKeyIpStats, apiKeys, type Log, logs } from '@/database';
-import { DRIZZLE } from '@/database/database.module';
+import { Injectable } from '@nestjs/common';
+import type { Log } from '@/database';
 import type { Database } from '@/database/database.types';
 import { ProjectService } from '../project/project.service';
-import type { ApiKeyStatsDto, ApiKeyStatsRequest } from './api-key-stats.dto';
+import type {
+  ApiKeyStatsDto,
+  ApiKeyStatsRequest,
+  IpApiDetails,
+} from './api-key-stats.dto';
+import { ApiKeyStatsRepository } from './api-key-stats.repository';
 
 const UNKNOWN_VALUE = 'unknown';
 const IP_API_BASE_URL = 'http://ip-api.com/json';
 const IP_API_TIMEOUT_MS = 1_500;
 
-interface IpApiDetails {
-  query: string;
-  status: string;
-  country?: string;
-  countryCode?: string;
-  region?: string;
-  regionName?: string;
-  city?: string;
-  zip?: string;
-  lat?: number;
-  lon?: number;
-  timezone?: string;
-  isp?: string;
-  org?: string;
-  as?: string;
-}
-
 /** Tracks and reads API key usage statistics. */
 @Injectable()
 export class ApiKeyStatsService {
   constructor(
-    @Inject(DRIZZLE) private readonly db: Database,
+    private readonly apiKeyStatsRepository: ApiKeyStatsRepository,
     private readonly projectService: ProjectService,
   ) {}
 
@@ -49,41 +35,30 @@ export class ApiKeyStatsService {
     request: ApiKeyStatsRequest,
     tx?: Database,
   ): Promise<void> {
-    const database = tx ?? this.db;
     const now = new Date();
     const ip = this.extractIp(request);
     const { country, detailed } = await this.extractCountry(request, ip);
-    const updateValues = {
-      lastSeen: now,
-      requestCount: sql`${apiKeyIpStats.requestCount} + 1`,
-      country,
-      ...(detailed ? { detailed } : {}),
-    };
 
-    await database
-      .update(apiKeys)
-      .set({
+    await this.apiKeyStatsRepository.incrementApiKeyUsage(
+      {
+        apiKeyId,
         lastUsedAt: now,
         lastUsedIp: ip,
-        usageCount: sql`${apiKeys.usageCount} + 1`,
-      })
-      .where(eq(apiKeys.id, apiKeyId));
+      },
+      tx,
+    );
 
-    await database
-      .insert(apiKeyIpStats)
-      .values({
+    await this.apiKeyStatsRepository.incrementIpStats(
+      {
         apiKeyId,
         ip,
         firstSeen: log.createdAt,
         lastSeen: now,
-        requestCount: 1,
         country,
         detailed,
-      })
-      .onConflictDoUpdate({
-        target: [apiKeyIpStats.apiKeyId, apiKeyIpStats.ip],
-        set: updateValues,
-      });
+      },
+      tx,
+    );
   }
 
   /**
@@ -97,25 +72,18 @@ export class ApiKeyStatsService {
     userId: string,
   ): Promise<ApiKeyStatsDto> {
     const project = await this.projectService.findByApiKeyId(apiKeyId, userId);
-    const [latency] = await this.db
-      .select({
-        totalRequests: sql<number>`count(${logs.id})::int`,
-        averageLatencyMs: sql<number>`coalesce(round(avg(${logs.durationMs})), 0)::int`,
-      })
-      .from(logs)
-      .where(eq(logs.apiKeyId, apiKeyId));
 
-    const ipStats = await this.db
-      .select()
-      .from(apiKeyIpStats)
-      .where(eq(apiKeyIpStats.apiKeyId, apiKeyId))
-      .orderBy(desc(apiKeyIpStats.lastSeen));
+    const latency =
+      await this.apiKeyStatsRepository.findLatencySummary(apiKeyId);
+
+    const ipStats =
+      await this.apiKeyStatsRepository.findIpStatsByApiKeyId(apiKeyId);
 
     return {
       apiKeyId,
       projectId: project.id,
-      totalRequests: latency?.totalRequests ?? 0,
-      averageLatencyMs: latency?.averageLatencyMs ?? 0,
+      totalRequests: latency.totalRequests,
+      averageLatencyMs: latency.averageLatencyMs,
       ipStats,
     };
   }

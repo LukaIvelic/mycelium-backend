@@ -7,6 +7,7 @@ import { IntegrationModule } from '../integration/integration.module';
 import { LogDetailModule } from '../log-detail/log-detail.module';
 import { ProjectModule } from '../project/project.module';
 import { LogController } from './log.controller';
+import { LogRepository } from './log.repository';
 import { LogService } from './log.service';
 
 @Module({
@@ -20,7 +21,7 @@ import { LogService } from './log.service';
     LogDetailModule,
   ],
   controllers: [LogController],
-  providers: [LogService],
+  providers: [LogService, LogRepository],
   exports: [LogService],
 })
 export class LogModule {}
