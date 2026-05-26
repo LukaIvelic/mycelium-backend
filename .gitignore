@@ -59,3 +59,4 @@ report.[0-9]*.[0-9]*.[0-9]*.[0-9]*.json
 .zed/
 *.tsbuildinfo
 /mycelium_sdk/
+/.claude
