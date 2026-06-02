@@ -12,6 +12,12 @@ const UserErrors = {
   NoUpdateFields: 'No updatable fields provided',
 } as const;
 
+const UserProfileErrors = {
+  NotFound: (userId: string) => `Profile for user ${userId} not found`,
+  NoUpdateFields: 'No updatable fields provided',
+  NotSelf: 'You can only access your own profile',
+} as const;
+
 const ApiKeyErrors = {
   NotFound: (id: string) => `API key ${id} not found`,
   ActiveKeyConflict:
@@ -47,6 +53,7 @@ const LogDetailErrors = {
 export const Errors = {
   Auth: AuthErrors,
   User: UserErrors,
+  UserProfile: UserProfileErrors,
   ApiKey: ApiKeyErrors,
   Project: ProjectErrors,
   Integration: IntegrationErrors,

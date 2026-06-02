@@ -13,6 +13,7 @@ import { LogModule } from './modules/log/log.module';
 import { LogDetailModule } from './modules/log-detail/log-detail.module';
 import { ProjectModule } from './modules/project/project.module';
 import { UserModule } from './modules/user/user.module';
+import { UserProfileModule } from './modules/user-profile/user-profile.module';
 
 const redisModule = RedisModule.forRootAsync({
   inject: [ConfigService],
@@ -28,6 +29,7 @@ const redisModule = RedisModule.forRootAsync({
     DatabaseModule,
     redisModule,
     UserModule,
+    UserProfileModule,
     AuthModule,
     ApiKeyModule,
     ApiKeyStatsModule,

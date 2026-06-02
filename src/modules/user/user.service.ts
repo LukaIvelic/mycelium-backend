@@ -49,8 +49,6 @@ export class UserService {
     const passwordHash = await bcrypt.hash(dto.password, SALT_ROUNDS);
 
     const user = await this.userRepository.insert({
-      firstName: dto.firstName,
-      lastName: dto.lastName,
       email: dto.email,
       passwordHash,
     });
@@ -67,12 +65,16 @@ export class UserService {
   async update(id: string, dto: UpdateUserDto) {
     this.validate(dto);
 
-    const { password, ...rest } = dto;
-    const data = {
-      ...rest,
-      passwordHash: password && (await bcrypt.hash(password, SALT_ROUNDS)),
-      updatedAt: new Date(),
-    };
+    const { password, email } = dto;
+    const data: Partial<{ email: string; passwordHash: string }> = {};
+
+    if (email !== undefined) {
+      data.email = email;
+    }
+
+    if (password !== undefined) {
+      data.passwordHash = await bcrypt.hash(password, SALT_ROUNDS);
+    }
 
     await this.userRepository.update(id, data);
 

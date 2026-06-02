@@ -7,6 +7,7 @@ import { JwtService } from '@nestjs/jwt';
 import * as bcrypt from 'bcrypt';
 import { Errors } from '@/lib/constants/errors';
 import { UserService } from '../user/user.service';
+import { UserProfileService } from '../user-profile/user-profile.service';
 import type { TokenDto } from './auth.dto';
 
 /** Handles login, signup, and token issuance for users. */
@@ -14,6 +15,7 @@ import type { TokenDto } from './auth.dto';
 export class AuthService {
   constructor(
     private readonly userService: UserService,
+    private readonly userProfileService: UserProfileService,
     private readonly jwtService: JwtService,
   ) {}
 
@@ -56,11 +58,10 @@ export class AuthService {
     if (existingUser) throw new ConflictException(Errors.User.EmailConflict);
 
     const user = await this.userService.create({
-      firstName,
-      lastName,
       email,
       password,
     });
+    await this.userProfileService.create(user.id, firstName, lastName, email);
 
     const payload = { sub: user.id, email: user.email };
     return { accessToken: await this.jwtService.signAsync(payload) };

@@ -20,12 +20,6 @@ export class UserResponse {
   @ApiProperty({ example: '550e8400-e29b-41d4-a716-446655440000' })
   id!: string;
 
-  @ApiProperty({ example: 'John' })
-  first_name!: string;
-
-  @ApiProperty({ example: 'Doe' })
-  last_name!: string;
-
   @ApiProperty({ example: 'john.doe@example.com' })
   email!: string;
 

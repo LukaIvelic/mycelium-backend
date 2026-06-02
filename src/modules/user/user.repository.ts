@@ -1,15 +1,20 @@
 import { Inject, Injectable } from '@nestjs/common';
-import { and, eq, getTableColumns, isNull } from 'drizzle-orm';
-import { type NewUser, type PublicUser, type User, users } from '@/database';
+import { and, eq, isNull } from 'drizzle-orm';
+import { type NewUser, type User, users } from '@/database';
 import { DRIZZLE } from '@/database/database.module';
 import type { Database } from '@/database/database.types';
-
-const { passwordHash: _passwordHash, ...publicUserColumns } =
-  getTableColumns(users);
+import type { PublicUser, UserUpdateValues } from './user.mapper';
 
 /** Data access for the `users` table. */
 @Injectable()
 export class UserRepository {
+  private readonly publicUserColumns = {
+    id: users.id,
+    email: users.email,
+    createdAt: users.createdAt,
+    validTo: users.validTo,
+  };
+
   constructor(@Inject(DRIZZLE) private readonly db: Database) {}
 
   /**
@@ -19,7 +24,7 @@ export class UserRepository {
    */
   async findActiveById(id: string): Promise<PublicUser | null> {
     const [user] = await this.db
-      .select(publicUserColumns)
+      .select(this.publicUserColumns)
       .from(users)
       .where(and(eq(users.id, id), isNull(users.validTo)));
     return user ?? null;
@@ -47,7 +52,7 @@ export class UserRepository {
     const [user] = await this.db
       .insert(users)
       .values(values)
-      .returning(publicUserColumns);
+      .returning(this.publicUserColumns);
     return user;
   }
 
@@ -57,8 +62,13 @@ export class UserRepository {
    * @param values Partial user changes.
    * @returns A promise that resolves when the update completes.
    */
-  async update(id: string, values: Partial<User>): Promise<void> {
-    await this.db.update(users).set(values).where(eq(users.id, id));
+  async update(id: string, values: UserUpdateValues): Promise<void> {
+    const userValues = this.filterUndefined(values);
+    const hasValuesToUpdate = Object.keys(userValues).length !== 0;
+
+    if (!hasValuesToUpdate) return;
+
+    await this.db.update(users).set(userValues).where(eq(users.id, id));
   }
 
   /**
@@ -71,5 +81,13 @@ export class UserRepository {
       .update(users)
       .set({ validTo: new Date() })
       .where(eq(users.id, id));
+  }
+
+  private filterUndefined<T extends Record<string, unknown>>(
+    values: T,
+  ): Partial<T> {
+    const entries = Object.entries(values);
+    const filteredEntries = entries.filter(([, value]) => value !== undefined);
+    return Object.fromEntries(filteredEntries) as Partial<T>;
   }
 }

@@ -6,7 +6,7 @@ Handles signup, login, JWT issuance, and email-existence checks.
 
 | Method | Path | Auth | Description |
 | --- | --- | --- | --- |
-| `POST` | `/api/authentication/signup` | None | Creates a new user account and returns a JWT. |
+| `POST` | `/api/authentication/signup` | None | Creates a new user account, creates its profile, and returns a JWT. |
 | `POST` | `/api/authentication/login` | None | Authenticates a user and returns a JWT. |
 | `POST` | `/api/authentication/token` | None | Hidden Swagger OAuth token endpoint. |
 | `GET` | `/api/authentication/validate?email=...` | None | Returns whether an email is already registered. |
@@ -16,5 +16,5 @@ Handles signup, login, JWT issuance, and email-existence checks.
 | Function | Visibility | Params | Returns | Description |
 | --- | --- | --- | --- | --- |
 | `login` | public | `email: string, password: string` | `Promise<TokenDto>` | Verifies credentials and signs a JWT. |
-| `signup` | public | `firstName: string, lastName: string, email: string, password: string` | `Promise<TokenDto>` | Creates a user and signs a JWT. |
+| `signup` | public | `firstName: string, lastName: string, email: string, password: string` | `Promise<TokenDto>` | Creates a user, creates its profile, and signs a JWT. |
 | `validateUser` | public | `email: string` | `Promise<{ exists: boolean }>` | Checks whether a user exists for an email address. |

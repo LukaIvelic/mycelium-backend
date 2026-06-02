@@ -10,8 +10,6 @@ import {
 
 const userSchema = {
   id: uuid('id').primaryKey().notNull().defaultRandom(),
-  firstName: text('first_name'),
-  lastName: text('last_name'),
   email: text('email').notNull().unique(),
   passwordHash: text('password_hash').notNull(),
   createdAt: timestamp('created_at', { withTimezone: true }).defaultNow(),
@@ -19,14 +17,6 @@ const userSchema = {
 };
 
 const userChecks = (table: Record<keyof typeof userSchema, AnyPgColumn>) => [
-  check(
-    'users_first_name_length_check',
-    sql`char_length(${table.firstName}) <= 64`,
-  ),
-  check(
-    'users_last_name_length_check',
-    sql`char_length(${table.lastName}) <= 64`,
-  ),
   check('users_email_length_check', sql`char_length(${table.email}) <= 255`),
 ];
 

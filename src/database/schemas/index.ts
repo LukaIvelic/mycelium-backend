@@ -4,3 +4,4 @@ export * from './integration';
 export * from './log';
 export * from './project';
 export * from './user';
+export * from './user-profile';
