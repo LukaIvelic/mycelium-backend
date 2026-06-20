@@ -2,6 +2,7 @@ import {
   BadRequestException,
   Body,
   Controller,
+  Param,
   ParseUUIDPipe,
   Query,
 } from '@nestjs/common';
@@ -12,22 +13,29 @@ import { Errors } from '@/lib/constants/errors';
 import { CurrentProject } from '@/modules/project/current-project.decorator';
 import {
   ApiAddApiKeyToProject,
+  ApiAddProjectMember,
   ApiCheckProjectApiKey,
   ApiCreateProject,
   ApiDeleteProject,
   ApiFindMyProjects,
   ApiFindProjectByApiKey,
   ApiGetProject,
+  ApiListProjectMembers,
+  ApiRemoveProjectMember,
   ApiUpdateProject,
+  ApiUpdateProjectMember,
 } from './project.decorator';
 import {
   AddApiKeyDto,
   AddApiKeyToProjectResponse,
+  AddProjectMemberDto,
   CreateProjectDto,
+  ProjectMemberResponse,
   ProjectSortDirection,
   ProjectSortField,
   type ProjectSortOptions,
   UpdateProjectDto,
+  UpdateProjectMemberDto,
 } from './project.dto';
 import { ProjectService } from './project.service';
 
@@ -84,22 +92,62 @@ export class ProjectController {
   @ApiUpdateProject()
   update(
     @CurrentProject() project: Project,
+    @CurrentUser() userId: string,
     @Body() dto: UpdateProjectDto,
   ): Promise<Project> {
-    return this.projectService.update(project, dto);
+    return this.projectService.update(project, dto, userId);
   }
 
   @ApiDeleteProject()
-  delete(@CurrentProject() project: Project): Promise<void> {
-    return this.projectService.delete(project);
+  delete(
+    @CurrentProject() project: Project,
+    @CurrentUser() userId: string,
+  ): Promise<void> {
+    return this.projectService.delete(project, userId);
   }
 
   @ApiAddApiKeyToProject()
   addApiKey(
     @CurrentProject() project: Project,
+    @CurrentUser() userId: string,
     @Body() dto: AddApiKeyDto,
   ): Promise<AddApiKeyToProjectResponse> {
-    return this.projectService.addApiKeyToProject(project, dto.name);
+    return this.projectService.addApiKeyToProject(project, userId, dto.name);
+  }
+
+  @ApiListProjectMembers()
+  findMembers(
+    @CurrentProject() project: Project,
+  ): Promise<ProjectMemberResponse[]> {
+    return this.projectService.findMembers(project);
+  }
+
+  @ApiAddProjectMember()
+  addMember(
+    @CurrentProject() project: Project,
+    @CurrentUser() userId: string,
+    @Body() dto: AddProjectMemberDto,
+  ): Promise<ProjectMemberResponse> {
+    return this.projectService.addMember(project, userId, dto);
+  }
+
+  @ApiUpdateProjectMember()
+  updateMember(
+    @CurrentProject() project: Project,
+    @CurrentUser() userId: string,
+    @Param('userId', ParseUUIDPipe) memberUserId: string,
+    @Body() dto: UpdateProjectMemberDto,
+  ): Promise<ProjectMemberResponse> {
+    return this.projectService.updateMember(project, userId, memberUserId, dto);
+  }
+
+  @ApiRemoveProjectMember()
+  removeMember(
+    @CurrentProject() project: Project,
+    @CurrentUser() userId: string,
+    @Param('userId', ParseUUIDPipe) memberUserId: string,
+  ): Promise<void> {
+    return this.projectService.removeMember(project, userId, memberUserId);
   }
 
   private parseHasApiKey(value?: string): boolean | undefined {

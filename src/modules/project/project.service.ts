@@ -5,18 +5,24 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
-import type { Project } from '@/database';
+import type { Project, ProjectMemberRole } from '@/database';
 import { Errors } from '@/lib/constants/errors';
 import { ApiKeyService } from '../api-key/api-key.service';
+import { NotificationService } from '../notification/notification.service';
+import { UserService } from '../user/user.service';
 import type {
   AddApiKeyToProjectResponse,
+  AddProjectMemberDto,
   CreateProjectDto,
+  ProjectMemberResponse,
   ProjectSortOptions,
   UpdateProjectDto,
+  UpdateProjectMemberDto,
 } from './project.dto';
 import { ProjectRepository } from './project.repository';
 
 const MAX_API_KEYS_PER_USER = 3;
+const PROJECT_MANAGER_ROLES: ProjectMemberRole[] = ['owner', 'admin'];
 
 /** Manages project ownership, lifecycle, and API key attachment rules. */
 @Injectable()
@@ -24,6 +30,8 @@ export class ProjectService {
   constructor(
     private readonly projectRepository: ProjectRepository,
     private readonly apiKeyService: ApiKeyService,
+    private readonly userService: UserService,
+    private readonly notificationService: NotificationService,
   ) {}
 
   /**
@@ -35,8 +43,7 @@ export class ProjectService {
   async findOne(id: string, userId: string): Promise<Project> {
     const project = await this.projectRepository.findActiveById(id);
     if (!project) throw new NotFoundException(Errors.Project.NotFound(id));
-    if (project.userId !== userId)
-      throw new ForbiddenException(Errors.Project.NotOwner);
+    await this.assertCanAccess(project, userId);
     return project;
   }
 
@@ -76,8 +83,7 @@ export class ProjectService {
    */
   async findByApiKeyId(apiKeyId: string, userId: string): Promise<Project> {
     const project = await this.apiKeyService.getProjectByApiKeyId(apiKeyId);
-    if (project.userId !== userId)
-      throw new ForbiddenException(Errors.Project.NotOwner);
+    await this.assertCanAccess(project, userId);
     return project;
   }
 
@@ -88,11 +94,20 @@ export class ProjectService {
    * @returns The created project.
    */
   async create(dto: CreateProjectDto, userId: string): Promise<Project> {
-    return this.projectRepository.insert({
+    const project = await this.projectRepository.insert({
       name: dto.name,
       description: dto.description,
       userId,
     });
+
+    await this.projectRepository.upsertMember(
+      project.id,
+      userId,
+      'owner',
+      userId,
+    );
+
+    return project;
   }
 
   /**
@@ -101,15 +116,20 @@ export class ProjectService {
    * @param dto Partial project changes.
    * @returns The updated project.
    */
-  async update(project: Project, dto: UpdateProjectDto): Promise<Project> {
+  async update(
+    project: Project,
+    dto: UpdateProjectDto,
+    userId: string,
+  ): Promise<Project> {
     this.validate(dto);
+    await this.assertCanManage(project, userId);
 
     await this.projectRepository.update(project.id, {
       ...dto,
       updatedAt: new Date(),
     });
 
-    return this.findOne(project.id, project.userId);
+    return this.findOne(project.id, userId);
   }
 
   /**
@@ -117,7 +137,14 @@ export class ProjectService {
    * @param project Project to delete.
    * @returns A promise that resolves when the project is archived.
    */
-  async delete(project: Project): Promise<void> {
+  async delete(project: Project, userId: string): Promise<void> {
+    await this.assertIsOwner(project, userId);
+    await this.notificationService.createForProjectUsers(project.id, {
+      description: `${project.name} was archived.`,
+      severity: 'info',
+      title: 'Project archived',
+      type: 'project_deleted',
+    });
     await this.projectRepository.softDelete(project.id);
   }
 
@@ -129,8 +156,11 @@ export class ProjectService {
    */
   async addApiKeyToProject(
     project: Project,
+    userId: string,
     name?: string,
   ): Promise<AddApiKeyToProjectResponse> {
+    await this.assertCanManage(project, userId);
+
     const activeCount = await this.apiKeyService.countActiveKeysForUser(
       project.userId,
     );
@@ -138,6 +168,118 @@ export class ProjectService {
       throw new ConflictException(Errors.Project.MaxApiKeysReached);
 
     return this.apiKeyService.createApiKey(project.id, name);
+  }
+
+  /**
+   * Lists project members visible to any project participant.
+   * @param project Project to inspect.
+   * @returns Active members plus the owner.
+   */
+  findMembers(project: Project): Promise<ProjectMemberResponse[]> {
+    return this.projectRepository.findMembersByProjectId(project.id);
+  }
+
+  /**
+   * Adds or reactivates a project member.
+   * @param project Project to update.
+   * @param actorUserId User granting access.
+   * @param dto Member invitation payload.
+   * @returns The resulting member response.
+   */
+  async addMember(
+    project: Project,
+    actorUserId: string,
+    dto: AddProjectMemberDto,
+  ): Promise<ProjectMemberResponse> {
+    await this.assertCanManage(project, actorUserId);
+
+    const target = await this.userService.findByEmail(dto.email);
+    if (!target) throw new NotFoundException(Errors.User.NotFound(dto.email));
+
+    if (target.id === project.userId) {
+      throw new BadRequestException(Errors.Project.CannotChangeOwner);
+    }
+
+    await this.projectRepository.upsertMember(
+      project.id,
+      target.id,
+      dto.role,
+      actorUserId,
+    );
+    await this.notificationService.createForUser(target.id, {
+      description: `You were added to ${project.name} as ${dto.role}.`,
+      projectId: project.id,
+      severity: 'info',
+      title: 'Project access granted',
+      type: 'project_member_added',
+    });
+
+    return this.findMember(project.id, target.id);
+  }
+
+  /**
+   * Updates a member role.
+   * @param project Project to update.
+   * @param actorUserId User changing access.
+   * @param memberUserId Member user id.
+   * @param dto Role update payload.
+   * @returns The updated member response.
+   */
+  async updateMember(
+    project: Project,
+    actorUserId: string,
+    memberUserId: string,
+    dto: UpdateProjectMemberDto,
+  ): Promise<ProjectMemberResponse> {
+    await this.assertCanManage(project, actorUserId);
+    this.assertCanChangeMember(project, memberUserId);
+
+    const member = await this.projectRepository.updateMemberRole(
+      project.id,
+      memberUserId,
+      dto.role,
+    );
+    if (!member) throw new NotFoundException(Errors.Project.MemberNotFound);
+
+    await this.notificationService.createForUser(memberUserId, {
+      description: `Your role in ${project.name} changed to ${dto.role}.`,
+      projectId: project.id,
+      severity: 'info',
+      title: 'Project role updated',
+      type: 'project_member_role_updated',
+    });
+
+    return this.findMember(project.id, memberUserId);
+  }
+
+  /**
+   * Removes an active member from a project.
+   * @param project Project to update.
+   * @param actorUserId User removing access.
+   * @param memberUserId Member user id.
+   * @returns A promise that resolves when access is removed.
+   */
+  async removeMember(
+    project: Project,
+    actorUserId: string,
+    memberUserId: string,
+  ): Promise<void> {
+    await this.assertCanManage(project, actorUserId);
+    this.assertCanChangeMember(project, memberUserId);
+
+    const member = await this.projectRepository.removeMember(
+      project.id,
+      memberUserId,
+    );
+    if (!member) throw new NotFoundException(Errors.Project.MemberNotFound);
+
+    await this.notificationService.createForUser(memberUserId, {
+      description: `You were removed from ${project.name}.`,
+      projectId: project.id,
+      severity: 'info',
+      title: 'Project access removed',
+      type: 'project_member_removed',
+    });
   }
 
   /**
@@ -151,5 +293,56 @@ export class ProjectService {
     if (hasNoDefinedValues) {
       throw new BadRequestException(Errors.User.NoUpdateFields);
     }
+  }
+
+  private async findMember(
+    projectId: string,
+    userId: string,
+  ): Promise<ProjectMemberResponse> {
+    const members =
+      await this.projectRepository.findMembersByProjectId(projectId);
+    const member = members.find((item) => item.userId === userId);
+    if (!member) throw new NotFoundException(Errors.Project.MemberNotFound);
+    return member;
+  }
+
+  private async assertCanAccess(
+    project: Project,
+    userId: string,
+  ): Promise<ProjectMemberRole> {
+    const role = await this.findRole(project, userId);
+    if (!role) throw new ForbiddenException(Errors.Project.NotMember);
+    return role;
+  }
+
+  private async assertCanManage(
+    project: Project,
+    userId: string,
+  ): Promise<void> {
+    const role = await this.assertCanAccess(project, userId);
+    if (!PROJECT_MANAGER_ROLES.includes(role)) {
+      throw new ForbiddenException(Errors.Project.RoleRequired);
+    }
+  }
+
+  private async assertIsOwner(project: Project, userId: string): Promise<void> {
+    const role = await this.assertCanAccess(project, userId);
+    if (role !== 'owner') {
+      throw new ForbiddenException(Errors.Project.NotOwner);
+    }
+  }
+
+  private assertCanChangeMember(project: Project, userId: string): void {
+    if (userId === project.userId) {
+      throw new BadRequestException(Errors.Project.CannotRemoveOwner);
+    }
+  }
+
+  private async findRole(
+    project: Project,
+    userId: string,
+  ): Promise<ProjectMemberRole | null> {
+    if (project.userId === userId) return 'owner';
+    return this.projectRepository.findActiveMemberRole(project.id, userId);
   }
 }

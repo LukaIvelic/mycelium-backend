@@ -5,6 +5,7 @@ import { ApiKeyStatsModule } from '../api-key-stats/api-key-stats.module';
 import { FlowModule } from '../flow/flow.module';
 import { IntegrationModule } from '../integration/integration.module';
 import { LogDetailModule } from '../log-detail/log-detail.module';
+import { NotificationModule } from '../notification/notification.module';
 import { ProjectModule } from '../project/project.module';
 import { LogController } from './log.controller';
 import { LogRepository } from './log.repository';
@@ -19,6 +20,7 @@ import { LogService } from './log.service';
     IntegrationModule,
     ProjectModule,
     LogDetailModule,
+    NotificationModule,
   ],
   controllers: [LogController],
   providers: [LogService, LogRepository],

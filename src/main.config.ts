@@ -29,6 +29,7 @@ function enableCors(app: INestApplication) {
       HttpMethod.GET,
       HttpMethod.POST,
       HttpMethod.PUT,
+      HttpMethod.PATCH,
       HttpMethod.DELETE,
       HttpMethod.OPTIONS,
     ],

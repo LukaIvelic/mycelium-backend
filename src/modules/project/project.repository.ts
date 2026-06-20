@@ -7,10 +7,21 @@ import {
   eq,
   exists,
   isNull,
+  ne,
   notExists,
+  or,
   sql,
 } from 'drizzle-orm';
-import { apiKeys, type NewProject, type Project, projects } from '@/database';
+import {
+  apiKeys,
+  type NewProject,
+  type Project,
+  type ProjectMember,
+  type ProjectMemberRole,
+  projectMembers,
+  projects,
+  users,
+} from '@/database';
 import { DRIZZLE } from '@/database/database.module';
 import type { Database } from '@/database/database.types';
 import {
@@ -18,6 +29,16 @@ import {
   ProjectSortField,
   type ProjectSortOptions,
 } from './project.dto';
+
+export interface ProjectMemberSummary {
+  createdAt: Date;
+  email: string;
+  isOwner: boolean;
+  projectId: string;
+  role: ProjectMemberRole;
+  updatedAt: Date;
+  userId: string;
+}
 
 /** Data access for the `projects` table. */
 @Injectable()
@@ -49,6 +70,16 @@ export class ProjectRepository {
     hasApiKey: boolean | undefined,
     sortOptions: ProjectSortOptions | undefined,
   ): Promise<Project[]> {
+    const memberSubquery = this.db
+      .select({ one: sql`1` })
+      .from(projectMembers)
+      .where(
+        and(
+          eq(projectMembers.projectId, projects.id),
+          eq(projectMembers.userId, userId),
+          isNull(projectMembers.validTo),
+        ),
+      );
     const activeKeySubquery = this.db
       .select({ one: sql`1` })
       .from(apiKeys)
@@ -56,9 +87,13 @@ export class ProjectRepository {
         and(eq(apiKeys.projectId, projects.id), isNull(apiKeys.revokedAt)),
       );
 
-    const conditions = [
+    const accessCondition = or(
       eq(projects.userId, userId),
+      exists(memberSubquery),
+    );
+    const conditions: SQL[] = [
       isNull(projects.validTo),
+      ...(accessCondition ? [accessCondition] : []),
       ...(hasApiKey === true ? [exists(activeKeySubquery)] : []),
       ...(hasApiKey === false ? [notExists(activeKeySubquery)] : []),
     ];
@@ -74,6 +109,82 @@ export class ProjectRepository {
   }
 
   /**
+   * Loads an active membership role for a user and project.
+   * @param projectId Project identifier.
+   * @param userId User identifier.
+   * @returns The active member role, or `null` when the user is not a member.
+   */
+  async findActiveMemberRole(
+    projectId: string,
+    userId: string,
+  ): Promise<ProjectMemberRole | null> {
+    const [member] = await this.db
+      .select({ role: projectMembers.role })
+      .from(projectMembers)
+      .where(
+        and(
+          eq(projectMembers.projectId, projectId),
+          eq(projectMembers.userId, userId),
+          isNull(projectMembers.validTo),
+        ),
+      );
+
+    return member?.role ?? null;
+  }
+
+  /**
+   * Lists active project members plus the project owner.
+   * @param projectId Project identifier.
+   * @returns Project members with public user fields.
+   */
+  async findMembersByProjectId(
+    projectId: string,
+  ): Promise<ProjectMemberSummary[]> {
+    const [ownerRow] = await this.db
+      .select({ email: users.email, project: projects })
+      .from(projects)
+      .innerJoin(users, eq(projects.userId, users.id))
+      .where(eq(projects.id, projectId));
+
+    if (!ownerRow) return [];
+
+    const memberRows = await this.db
+      .select({ email: users.email, member: projectMembers })
+      .from(projectMembers)
+      .innerJoin(users, eq(projectMembers.userId, users.id))
+      .where(
+        and(
+          eq(projectMembers.projectId, projectId),
+          isNull(projectMembers.validTo),
+          ne(projectMembers.userId, ownerRow.project.userId),
+        ),
+      );
+
+    const owner: ProjectMemberSummary = {
+      createdAt: ownerRow.project.createdAt,
+      email: ownerRow.email,
+      isOwner: true,
+      projectId: ownerRow.project.id,
+      role: 'owner',
+      updatedAt: ownerRow.project.updatedAt ?? ownerRow.project.createdAt,
+      userId: ownerRow.project.userId,
+    };
+
+    return [
+      owner,
+      ...memberRows.map(({ email, member }) => ({
+        createdAt: member.createdAt,
+        email,
+        isOwner: false,
+        projectId: member.projectId,
+        role: member.role,
+        updatedAt: member.updatedAt,
+        userId: member.userId,
+      })),
+    ];
+  }
+
+  /**
    * Inserts a new project row.
    * @param values Project insert payload.
    * @returns The inserted project.
@@ -81,6 +192,98 @@ export class ProjectRepository {
   async insert(values: NewProject): Promise<Project> {
     const [project] = await this.db.insert(projects).values(values).returning();
     return project;
+  }
+
+  /**
+   * Adds or reactivates a project membership.
+   * @param projectId Project identifier.
+   * @param userId Member user identifier.
+   * @param role Role to assign.
+   * @param addedByUserId User who granted access.
+   * @returns The active membership row.
+   */
+  async upsertMember(
+    projectId: string,
+    userId: string,
+    role: ProjectMemberRole,
+    addedByUserId: string,
+  ): Promise<ProjectMember> {
+    const now = new Date();
+    const [member] = await this.db
+      .insert(projectMembers)
+      .values({
+        addedByUserId,
+        projectId,
+        role,
+        updatedAt: now,
+        userId,
+        validTo: null,
+      })
+      .onConflictDoUpdate({
+        target: [projectMembers.projectId, projectMembers.userId],
+        set: {
+          addedByUserId,
+          role,
+          updatedAt: now,
+          validTo: null,
+        },
+      })
+      .returning();
+
+    return member;
+  }
+
+  /**
+   * Updates an active project member role.
+   * @param projectId Project identifier.
+   * @param userId Member user identifier.
+   * @param role Role to assign.
+   * @returns The updated member, or `null` when no active membership exists.
+   */
+  async updateMemberRole(
+    projectId: string,
+    userId: string,
+    role: ProjectMemberRole,
+  ): Promise<ProjectMember | null> {
+    const [member] = await this.db
+      .update(projectMembers)
+      .set({ role, updatedAt: new Date() })
+      .where(
+        and(
+          eq(projectMembers.projectId, projectId),
+          eq(projectMembers.userId, userId),
+          isNull(projectMembers.validTo),
+        ),
+      )
+      .returning();
+
+    return member ?? null;
+  }
+
+  /**
+   * Soft removes a project member.
+   * @param projectId Project identifier.
+   * @param userId Member user identifier.
+   * @returns The removed member, or `null` when no active membership exists.
+   */
+  async removeMember(
+    projectId: string,
+    userId: string,
+  ): Promise<ProjectMember | null> {
+    const now = new Date();
+    const [member] = await this.db
+      .update(projectMembers)
+      .set({ updatedAt: now, validTo: now })
+      .where(
+        and(
+          eq(projectMembers.projectId, projectId),
+          eq(projectMembers.userId, userId),
+          isNull(projectMembers.validTo),
+        ),
+      )
+      .returning();
+
+    return member ?? null;
   }
 
   /**
