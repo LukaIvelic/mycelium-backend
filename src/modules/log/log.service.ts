@@ -7,6 +7,7 @@ import { ApiKeyStatsService } from '../api-key-stats/api-key-stats.service';
 import { FlowService } from '../flow/flow.service';
 import { IntegrationService } from '../integration/integration.service';
 import { LogDetailService } from '../log-detail/log-detail.service';
+import { NotificationService } from '../notification/notification.service';
 import { ProjectService } from '../project/project.service';
 import type { CreateLogDto } from './log.dto';
 import { LogRepository } from './log.repository';
@@ -22,6 +23,7 @@ export class LogService {
     private readonly flowService: FlowService,
     private readonly integrationService: IntegrationService,
     private readonly logDetailService: LogDetailService,
+    private readonly notificationService: NotificationService,
   ) {}
 
   /**
@@ -96,6 +98,7 @@ export class LogService {
       );
 
       await this.apiKeyStatsService.trackLogIngest(apiKeyId, log, request, tx);
+      await this.notificationService.createLogNotifications(log, tx);
 
       return log;
     });

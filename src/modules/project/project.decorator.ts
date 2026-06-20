@@ -17,7 +17,11 @@ import {
 } from '@nestjs/swagger';
 import { JwtGuard } from '@/common/guards/jwt.guard';
 import { ProjectOwnershipGuard } from '@/modules/project/project-ownership.guard';
-import { ProjectSortDirection, ProjectSortField } from './project.dto';
+import {
+  ProjectMemberResponse,
+  ProjectSortDirection,
+  ProjectSortField,
+} from './project.dto';
 
 export class ProjectResponse {
   @ApiProperty({ example: '550e8400-e29b-41d4-a716-446655440000' })
@@ -181,5 +185,64 @@ export function ApiAddApiKeyToProject() {
     }),
     ApiParam({ name: 'id', type: 'string', format: 'uuid' }),
     ApiResponse({ status: 201, description: 'API key created' }),
+  );
+}
+
+export function ApiListProjectMembers() {
+  return applyDecorators(
+    Get(':id/members'),
+    UseGuards(JwtGuard, ProjectOwnershipGuard),
+    ApiOAuth2([]),
+    ApiOperation({ summary: 'List project members' }),
+    ApiParam({ name: 'id', type: 'string', format: 'uuid' }),
+    ApiResponse({
+      status: 200,
+      description: 'Project members found',
+      type: [ProjectMemberResponse],
+    }),
+  );
+}
+
+export function ApiAddProjectMember() {
+  return applyDecorators(
+    Post(':id/members'),
+    UseGuards(JwtGuard, ProjectOwnershipGuard),
+    ApiOAuth2([]),
+    ApiOperation({ summary: 'Add a user to a project' }),
+    ApiParam({ name: 'id', type: 'string', format: 'uuid' }),
+    ApiResponse({
+      status: 201,
+      description: 'Project member added',
+      type: ProjectMemberResponse,
+    }),
+  );
+}
+
+export function ApiUpdateProjectMember() {
+  return applyDecorators(
+    Patch(':id/members/:userId'),
+    UseGuards(JwtGuard, ProjectOwnershipGuard),
+    ApiOAuth2([]),
+    ApiOperation({ summary: 'Update a project member role' }),
+    ApiParam({ name: 'id', type: 'string', format: 'uuid' }),
+    ApiParam({ name: 'userId', type: 'string', format: 'uuid' }),
+    ApiResponse({
+      status: 200,
+      description: 'Project member updated',
+      type: ProjectMemberResponse,
+    }),
+  );
+}
+
+export function ApiRemoveProjectMember() {
+  return applyDecorators(
+    Delete(':id/members/:userId'),
+    UseGuards(JwtGuard, ProjectOwnershipGuard),
+    HttpCode(204),
+    ApiOAuth2([]),
+    ApiOperation({ summary: 'Remove a project member' }),
+    ApiParam({ name: 'id', type: 'string', format: 'uuid' }),
+    ApiParam({ name: 'userId', type: 'string', format: 'uuid' }),
+    ApiResponse({ status: 204, description: 'Project member removed' }),
   );
 }

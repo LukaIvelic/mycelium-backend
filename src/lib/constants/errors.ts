@@ -35,7 +35,12 @@ const ProjectErrors = {
   InvalidSortDirectionParam: 'sort must be ASC or DESC',
   InvalidSortFieldParam:
     'field must be Name, RegistrationDate, or RecentActivity',
+  CannotChangeOwner: 'Project owner role cannot be changed',
+  CannotRemoveOwner: 'Project owner cannot be removed from the project',
+  MemberNotFound: 'Project member not found',
+  NotMember: 'You do not have access to this project',
   NotOwner: 'You do not own this project',
+  RoleRequired: 'You do not have permission to manage this project',
 } as const;
 
 const IntegrationErrors = {
@@ -50,6 +55,10 @@ const LogDetailErrors = {
   NotFound: (logId: string) => `Log ${logId} has no detail record`,
 } as const;
 
+const NotificationErrors = {
+  NotFound: 'Notification not found',
+} as const;
+
 export const Errors = {
   Auth: AuthErrors,
   User: UserErrors,
@@ -59,4 +68,5 @@ export const Errors = {
   Integration: IntegrationErrors,
   Log: LogErrors,
   LogDetail: LogDetailErrors,
+  Notification: NotificationErrors,
 } as const;
