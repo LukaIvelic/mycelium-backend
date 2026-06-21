@@ -3,7 +3,13 @@ import type {
   AssistantMessageDto,
 } from './assistant.dto';
 
+export interface AssistantAccount {
+  email: string;
+  id: string;
+}
+
 export interface AssistantCompletionRequest {
+  account?: AssistantAccount;
   messages: AssistantMessageDto[];
   projectId?: string;
   userId: string;

@@ -15,6 +15,7 @@ import {
 } from './assistant.config';
 import type { AssistantChatResponse } from './assistant.dto';
 import type {
+  AssistantAccount,
   AssistantCompletionRequest,
   AssistantProvider,
   OpenAiFunctionCall,
@@ -404,8 +405,22 @@ export class OpenAiAssistantProvider implements AssistantProvider {
     request: AssistantCompletionRequest,
     toolsEnabled: boolean,
   ): string {
-    if (!toolsEnabled) return this.systemPrompt;
-    return `${this.systemPrompt}\n\n${buildSqlToolGuidance(request.projectId)}`;
+    const base = this.withAccountContext(this.systemPrompt, request.account);
+    if (!toolsEnabled) return base;
+    return `${base}\n\n${buildSqlToolGuidance(request.projectId)}`;
+  }
+
+  private withAccountContext(
+    prompt: string,
+    account?: AssistantAccount,
+  ): string {
+    if (!account) return prompt;
+    return (
+      `${prompt}\n\n` +
+      `You are assisting the signed-in user: email \`${account.email}\` (user id \`${account.id}\`). ` +
+      'When the user says "me", "my", or "my account", this is who they mean. ' +
+      'Never expose or query data belonging to other users.'
+    );
   }
 
   private extractFunctionCalls(body: OpenAiResponseBody): OpenAiFunctionCall[] {
