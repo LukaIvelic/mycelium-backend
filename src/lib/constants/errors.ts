@@ -59,7 +59,15 @@ const NotificationErrors = {
   NotFound: 'Notification not found',
 } as const;
 
+const AssistantErrors = {
+  MissingOpenAiApiKey: 'Missing required environment variable: OPENAI_API_KEY',
+  ProviderEmptyResponse: 'Assistant provider returned an empty response',
+  ProviderRequestFailed: 'Assistant provider request failed',
+  RateLimited: 'Too Many Requests',
+} as const;
+
 export const Errors = {
+  Assistant: AssistantErrors,
   Auth: AuthErrors,
   User: UserErrors,
   UserProfile: UserProfileErrors,
