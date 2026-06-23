@@ -12,18 +12,38 @@ import type { Project } from '@/database';
 import { Errors } from '@/lib/constants/errors';
 import { CurrentProject } from '@/modules/project/current-project.decorator';
 import {
+  CommunicationSettingsDto,
+  CommunicationSettingsResponse,
+  PerformanceSettingsDto,
+  PerformanceSettingsResponse,
+  ProjectRegionSettingsDto,
+  ProjectRegionSettingsResponse,
+} from '../settings/settings.dto';
+import { SettingsService } from '../settings/settings.service';
+import {
   ApiAddApiKeyToProject,
   ApiAddProjectMember,
   ApiCheckProjectApiKey,
   ApiCreateProject,
   ApiDeleteProject,
+  ApiDeleteProjectCommunicationSettings,
+  ApiDeleteProjectPerformanceSettings,
+  ApiDeleteProjectRegionSettings,
   ApiFindMyProjects,
   ApiFindProjectByApiKey,
   ApiGetProject,
+  ApiGetProjectCommunicationSettings,
+  ApiGetProjectPerformanceSettings,
+  ApiGetProjectRegionSettings,
   ApiListProjectMembers,
   ApiRemoveProjectMember,
+  ApiReplaceProjectCommunicationSettings,
+  ApiReplaceProjectPerformanceSettings,
   ApiUpdateProject,
+  ApiUpdateProjectCommunicationSettings,
   ApiUpdateProjectMember,
+  ApiUpdateProjectPerformanceSettings,
+  ApiUpdateProjectRegionSettings,
 } from './project.decorator';
 import {
   AddApiKeyDto,
@@ -42,7 +62,10 @@ import { ProjectService } from './project.service';
 @ApiTags('projects')
 @Controller('projects')
 export class ProjectController {
-  constructor(private readonly projectService: ProjectService) {}
+  constructor(
+    private readonly projectService: ProjectService,
+    private readonly settingsService: SettingsService,
+  ) {}
 
   @ApiFindMyProjects()
   findMine(
@@ -104,6 +127,104 @@ export class ProjectController {
     @CurrentUser() userId: string,
   ): Promise<void> {
     return this.projectService.delete(project, userId);
+  }
+
+  @ApiGetProjectPerformanceSettings()
+  findPerformanceSettings(
+    @CurrentProject() project: Project,
+  ): Promise<PerformanceSettingsResponse> {
+    return this.settingsService.findProjectPerformance(project.id);
+  }
+
+  @ApiReplaceProjectPerformanceSettings()
+  async replacePerformanceSettings(
+    @CurrentProject() project: Project,
+    @CurrentUser() userId: string,
+    @Body() dto: PerformanceSettingsDto,
+  ): Promise<PerformanceSettingsResponse> {
+    await this.projectService.assertCanManageProject(project, userId);
+    return this.settingsService.replaceProjectPerformance(project.id, dto);
+  }
+
+  @ApiUpdateProjectPerformanceSettings()
+  async updatePerformanceSettings(
+    @CurrentProject() project: Project,
+    @CurrentUser() userId: string,
+    @Body() dto: PerformanceSettingsDto,
+  ): Promise<PerformanceSettingsResponse> {
+    await this.projectService.assertCanManageProject(project, userId);
+    return this.settingsService.updateProjectPerformance(project.id, dto);
+  }
+
+  @ApiDeleteProjectPerformanceSettings()
+  async deletePerformanceSettings(
+    @CurrentProject() project: Project,
+    @CurrentUser() userId: string,
+  ): Promise<void> {
+    await this.projectService.assertCanManageProject(project, userId);
+    return this.settingsService.deleteProjectPerformance(project.id);
+  }
+
+  @ApiGetProjectCommunicationSettings()
+  findCommunicationSettings(
+    @CurrentProject() project: Project,
+  ): Promise<CommunicationSettingsResponse> {
+    return this.settingsService.findProjectCommunication(project.id);
+  }
+
+  @ApiReplaceProjectCommunicationSettings()
+  async replaceCommunicationSettings(
+    @CurrentProject() project: Project,
+    @CurrentUser() userId: string,
+    @Body() dto: CommunicationSettingsDto,
+  ): Promise<CommunicationSettingsResponse> {
+    await this.projectService.assertCanManageProject(project, userId);
+    return this.settingsService.replaceProjectCommunication(project.id, dto);
+  }
+
+  @ApiUpdateProjectCommunicationSettings()
+  async updateCommunicationSettings(
+    @CurrentProject() project: Project,
+    @CurrentUser() userId: string,
+    @Body() dto: CommunicationSettingsDto,
+  ): Promise<CommunicationSettingsResponse> {
+    await this.projectService.assertCanManageProject(project, userId);
+    return this.settingsService.updateProjectCommunication(project.id, dto);
+  }
+
+  @ApiDeleteProjectCommunicationSettings()
+  async deleteCommunicationSettings(
+    @CurrentProject() project: Project,
+    @CurrentUser() userId: string,
+  ): Promise<void> {
+    await this.projectService.assertCanManageProject(project, userId);
+    return this.settingsService.deleteProjectCommunication(project.id);
+  }
+
+  @ApiGetProjectRegionSettings()
+  findRegionSettings(
+    @CurrentProject() project: Project,
+  ): Promise<ProjectRegionSettingsResponse> {
+    return this.settingsService.findProjectRegion(project.id);
+  }
+
+  @ApiUpdateProjectRegionSettings()
+  async updateRegionSettings(
+    @CurrentProject() project: Project,
+    @CurrentUser() userId: string,
+    @Body() dto: ProjectRegionSettingsDto,
+  ): Promise<ProjectRegionSettingsResponse> {
+    await this.projectService.assertCanManageProject(project, userId);
+    return this.settingsService.updateProjectRegion(project.id, dto);
+  }
+
+  @ApiDeleteProjectRegionSettings()
+  async deleteRegionSettings(
+    @CurrentProject() project: Project,
+    @CurrentUser() userId: string,
+  ): Promise<void> {
+    await this.projectService.assertCanManageProject(project, userId);
+    return this.settingsService.deleteProjectRegion(project.id);
   }
 
   @ApiAddApiKeyToProject()

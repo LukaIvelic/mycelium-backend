@@ -1,5 +1,5 @@
 import { Inject, Injectable } from '@nestjs/common';
-import { and, eq } from 'drizzle-orm';
+import { and, eq, ne } from 'drizzle-orm';
 import {
   type Integration,
   integrations,
@@ -37,6 +37,31 @@ export class IntegrationRepository {
   }
 
   /**
+   * Inserts a manually managed integration row.
+   * @param values Integration insert payload.
+   * @returns The inserted integration.
+   */
+  async insert(values: NewIntegration): Promise<Integration> {
+    const [integration] = await this.db
+      .insert(integrations)
+      .values(values)
+      .returning();
+    return integration;
+  }
+
+  /**
+   * Lists integrations for a project.
+   * @param projectId Project identifier.
+   * @returns Project integrations.
+   */
+  async findByProjectId(projectId: string): Promise<Integration[]> {
+    return this.db
+      .select()
+      .from(integrations)
+      .where(eq(integrations.projectId, projectId));
+  }
+
+  /**
    * Loads an integration for a project by its normalized origin.
    * @param projectId Project identifier.
    * @param normalizedOrigin Normalized integration origin.
@@ -62,6 +87,32 @@ export class IntegrationRepository {
   }
 
   /**
+   * Loads an integration by normalized origin while excluding one integration id.
+   * @param projectId Project identifier.
+   * @param normalizedOrigin Normalized integration origin.
+   * @param excludedId Integration id to ignore.
+   * @returns A conflicting integration, or `null` when none exists.
+   */
+  async findByProjectIdAndNormalizedOriginExcludingId(
+    projectId: string,
+    normalizedOrigin: string,
+    excludedId: string,
+  ): Promise<Integration | null> {
+    const [integration] = await this.db
+      .select()
+      .from(integrations)
+      .where(
+        and(
+          eq(integrations.projectId, projectId),
+          eq(integrations.normalizedOrigin, normalizedOrigin),
+          ne(integrations.id, excludedId),
+        ),
+      );
+
+    return integration ?? null;
+  }
+
+  /**
    * Loads an integration by its identifier.
    * @param id Integration identifier.
    * @returns The matching integration, or `null` when not found.
@@ -73,5 +124,33 @@ export class IntegrationRepository {
       .where(eq(integrations.id, id));
 
     return integration ?? null;
+  }
+
+  /**
+   * Updates an integration row.
+   * @param id Integration identifier.
+   * @param values Partial integration changes.
+   * @returns The updated integration, or `null` when not found.
+   */
+  async update(
+    id: string,
+    values: Partial<Integration>,
+  ): Promise<Integration | null> {
+    const [integration] = await this.db
+      .update(integrations)
+      .set(values)
+      .where(eq(integrations.id, id))
+      .returning();
+
+    return integration ?? null;
+  }
+
+  /**
+   * Deletes an integration row.
+   * @param id Integration identifier.
+   * @returns A promise that resolves when the delete completes.
+   */
+  async delete(id: string): Promise<void> {
+    await this.db.delete(integrations).where(eq(integrations.id, id));
   }
 }

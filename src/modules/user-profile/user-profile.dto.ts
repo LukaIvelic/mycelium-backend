@@ -3,20 +3,24 @@ import { IsEmail, IsOptional, IsString } from 'class-validator';
 
 export class UpdateUserProfileDto {
   @ApiProperty({ example: 'John' })
+  @IsOptional()
   @IsString()
-  firstName!: string;
+  firstName?: string;
 
   @ApiProperty({ example: 'Doe' })
+  @IsOptional()
   @IsString()
-  lastName!: string;
+  lastName?: string;
 
   @ApiProperty({ example: 'johdoe' })
+  @IsOptional()
   @IsString()
-  username!: string;
+  username?: string;
 
   @ApiProperty({ example: 'john.doe@example.com' })
+  @IsOptional()
   @IsEmail()
-  email!: string;
+  email?: string;
 
   @ApiProperty({ example: 'Backend engineer', required: false })
   @IsOptional()
@@ -34,8 +38,9 @@ export class UpdateUserProfileDto {
   company?: string;
 
   @ApiProperty({ example: 'Zagreb, Croatia' })
+  @IsOptional()
   @IsString()
-  location!: string;
+  location?: string;
 
   @ApiProperty({ example: 'https://example.com/avatar.png', required: false })
   @IsOptional()

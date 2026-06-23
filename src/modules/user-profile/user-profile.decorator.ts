@@ -1,4 +1,11 @@
-import { applyDecorators, Get, Patch, UseGuards } from '@nestjs/common';
+import {
+  applyDecorators,
+  Delete,
+  Get,
+  HttpCode,
+  Patch,
+  UseGuards,
+} from '@nestjs/common';
 import {
   ApiOAuth2,
   ApiOperation,
@@ -7,6 +14,10 @@ import {
   ApiResponse,
 } from '@nestjs/swagger';
 import { JwtGuard } from '@/common/guards/jwt.guard';
+import {
+  UserAccessibilitySettingsResponse,
+  UserNotificationSettingsResponse,
+} from '../settings/settings.dto';
 
 export class UserProfileResponse {
   @ApiProperty({ example: '550e8400-e29b-41d4-a716-446655440000' })
@@ -95,5 +106,83 @@ export function ApiUpdateUserProfile() {
       type: UserProfileResponse,
     }),
     ApiResponse({ status: 404, description: 'User profile not found' }),
+  );
+}
+
+export function ApiGetUserNotificationSettings() {
+  return applyDecorators(
+    Get('me/settings/notifications'),
+    UseGuards(JwtGuard),
+    ApiOAuth2([]),
+    ApiOperation({ summary: 'Get current user notification settings' }),
+    ApiResponse({
+      status: 200,
+      description: 'Notification settings found',
+      type: UserNotificationSettingsResponse,
+    }),
+  );
+}
+
+export function ApiUpdateUserNotificationSettings() {
+  return applyDecorators(
+    Patch('me/settings/notifications'),
+    UseGuards(JwtGuard),
+    ApiOAuth2([]),
+    ApiOperation({ summary: 'Update current user notification settings' }),
+    ApiResponse({
+      status: 200,
+      description: 'Notification settings updated',
+      type: UserNotificationSettingsResponse,
+    }),
+  );
+}
+
+export function ApiDeleteUserNotificationSettings() {
+  return applyDecorators(
+    Delete('me/settings/notifications'),
+    UseGuards(JwtGuard),
+    HttpCode(204),
+    ApiOAuth2([]),
+    ApiOperation({ summary: 'Reset current user notification settings' }),
+    ApiResponse({ status: 204, description: 'Notification settings reset' }),
+  );
+}
+
+export function ApiGetUserAccessibilitySettings() {
+  return applyDecorators(
+    Get('me/settings/accessibility'),
+    UseGuards(JwtGuard),
+    ApiOAuth2([]),
+    ApiOperation({ summary: 'Get current user accessibility settings' }),
+    ApiResponse({
+      status: 200,
+      description: 'Accessibility settings found',
+      type: UserAccessibilitySettingsResponse,
+    }),
+  );
+}
+
+export function ApiUpdateUserAccessibilitySettings() {
+  return applyDecorators(
+    Patch('me/settings/accessibility'),
+    UseGuards(JwtGuard),
+    ApiOAuth2([]),
+    ApiOperation({ summary: 'Update current user accessibility settings' }),
+    ApiResponse({
+      status: 200,
+      description: 'Accessibility settings updated',
+      type: UserAccessibilitySettingsResponse,
+    }),
+  );
+}
+
+export function ApiDeleteUserAccessibilitySettings() {
+  return applyDecorators(
+    Delete('me/settings/accessibility'),
+    UseGuards(JwtGuard),
+    HttpCode(204),
+    ApiOAuth2([]),
+    ApiOperation({ summary: 'Reset current user accessibility settings' }),
+    ApiResponse({ status: 204, description: 'Accessibility settings reset' }),
   );
 }

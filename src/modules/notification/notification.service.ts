@@ -2,11 +2,11 @@ import { Injectable, NotFoundException } from '@nestjs/common';
 import type { Log, NewNotification, Notification } from '@/database';
 import type { Database } from '@/database/database.types';
 import { Errors } from '@/lib/constants/errors';
+import { SettingsService } from '../settings/settings.service';
 import { NotificationRepository } from './notification.repository';
 
 const DEFAULT_NOTIFICATION_LIMIT = 50;
 const MAX_NOTIFICATION_LIMIT = 100;
-const SLOW_REQUEST_MS = 1000;
 
 export type NotificationPayload = Pick<
   NewNotification,
@@ -18,6 +18,7 @@ export type NotificationPayload = Pick<
 export class NotificationService {
   constructor(
     private readonly notificationRepository: NotificationRepository,
+    private readonly settingsService: SettingsService,
   ) {}
 
   /**
@@ -93,8 +94,16 @@ export class NotificationService {
    */
   async createLogNotifications(log: Log, tx?: Database): Promise<void> {
     const requestLabel = `${log.statusCode} ${log.method} ${log.path}`;
+    const settings = await this.settingsService.resolvePerformance(
+      log.projectId,
+      log.integrationId,
+      tx,
+    );
 
-    if (log.statusCode >= 500) {
+    if (
+      settings.notifyOnFailedRequests &&
+      log.statusCode >= settings.criticalStatusCode
+    ) {
       await this.createForProjectUsers(
         log.projectId,
         {
@@ -105,7 +114,10 @@ export class NotificationService {
         },
         tx,
       );
-    } else if (log.statusCode >= 400) {
+    } else if (
+      settings.notifyOnFailedRequests &&
+      log.statusCode >= settings.warningStatusCode
+    ) {
       await this.createForProjectUsers(
         log.projectId,
         {
@@ -118,7 +130,10 @@ export class NotificationService {
       );
     }
 
-    if (log.durationMs >= SLOW_REQUEST_MS) {
+    if (
+      settings.notifyOnSlowRequests &&
+      log.durationMs >= settings.slowRequestThresholdMs
+    ) {
       await this.createForProjectUsers(
         log.projectId,
         {

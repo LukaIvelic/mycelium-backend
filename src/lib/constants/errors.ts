@@ -45,6 +45,16 @@ const ProjectErrors = {
 
 const IntegrationErrors = {
   NotFound: (id: string) => `Integration ${id} not found`,
+  Conflict: 'An integration with this origin already exists in the project',
+  EmptyOrigin: 'Integration origin cannot be empty',
+  MissingActiveApiKey:
+    'Create an active API key for this project before adding an integration',
+  NoUpdateFields: 'No updatable integration fields provided',
+} as const;
+
+const SettingsErrors = {
+  InvalidStatusCodeOrder:
+    'warningStatusCode must be less than or equal to criticalStatusCode',
 } as const;
 
 const LogErrors = {
@@ -74,6 +84,7 @@ export const Errors = {
   ApiKey: ApiKeyErrors,
   Project: ProjectErrors,
   Integration: IntegrationErrors,
+  Settings: SettingsErrors,
   Log: LogErrors,
   LogDetail: LogDetailErrors,
   Notification: NotificationErrors,

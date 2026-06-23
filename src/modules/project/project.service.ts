@@ -57,6 +57,18 @@ export class ProjectService {
   }
 
   /**
+   * Verifies that a user may manage project settings and membership.
+   * @param project Project to check.
+   * @param userId User requesting the management action.
+   */
+  async assertCanManageProject(
+    project: Project,
+    userId: string,
+  ): Promise<void> {
+    await this.assertCanManage(project, userId);
+  }
+
+  /**
    * Lists active projects for a user with an optional API key filter.
    * @param userId Owner identifier.
    * @param hasApiKey Optional filter for projects with or without active keys.

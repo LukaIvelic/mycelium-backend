@@ -5,6 +5,7 @@ import {
   HttpCode,
   Patch,
   Post,
+  Put,
   UseGuards,
 } from '@nestjs/common';
 import {
@@ -17,6 +18,11 @@ import {
 } from '@nestjs/swagger';
 import { JwtGuard } from '@/common/guards/jwt.guard';
 import { ProjectOwnershipGuard } from '@/modules/project/project-ownership.guard';
+import {
+  CommunicationSettingsResponse,
+  PerformanceSettingsResponse,
+  ProjectRegionSettingsResponse,
+} from '@/modules/settings/settings.dto';
 import {
   ProjectMemberResponse,
   ProjectSortDirection,
@@ -244,5 +250,172 @@ export function ApiRemoveProjectMember() {
     ApiParam({ name: 'id', type: 'string', format: 'uuid' }),
     ApiParam({ name: 'userId', type: 'string', format: 'uuid' }),
     ApiResponse({ status: 204, description: 'Project member removed' }),
+  );
+}
+
+export function ApiGetProjectPerformanceSettings() {
+  return applyDecorators(
+    Get(':id/settings/performance'),
+    UseGuards(JwtGuard, ProjectOwnershipGuard),
+    ApiOAuth2([]),
+    ApiOperation({ summary: 'Get project performance settings' }),
+    ApiParam({ name: 'id', type: 'string', format: 'uuid' }),
+    ApiResponse({
+      status: 200,
+      description: 'Project performance settings found',
+      type: PerformanceSettingsResponse,
+    }),
+  );
+}
+
+export function ApiReplaceProjectPerformanceSettings() {
+  return applyDecorators(
+    Put(':id/settings/performance'),
+    UseGuards(JwtGuard, ProjectOwnershipGuard),
+    ApiOAuth2([]),
+    ApiOperation({ summary: 'Replace project performance settings' }),
+    ApiParam({ name: 'id', type: 'string', format: 'uuid' }),
+    ApiResponse({
+      status: 200,
+      description: 'Project performance settings replaced',
+      type: PerformanceSettingsResponse,
+    }),
+  );
+}
+
+export function ApiUpdateProjectPerformanceSettings() {
+  return applyDecorators(
+    Patch(':id/settings/performance'),
+    UseGuards(JwtGuard, ProjectOwnershipGuard),
+    ApiOAuth2([]),
+    ApiOperation({ summary: 'Update project performance settings' }),
+    ApiParam({ name: 'id', type: 'string', format: 'uuid' }),
+    ApiResponse({
+      status: 200,
+      description: 'Project performance settings updated',
+      type: PerformanceSettingsResponse,
+    }),
+  );
+}
+
+export function ApiDeleteProjectPerformanceSettings() {
+  return applyDecorators(
+    Delete(':id/settings/performance'),
+    UseGuards(JwtGuard, ProjectOwnershipGuard),
+    HttpCode(204),
+    ApiOAuth2([]),
+    ApiOperation({ summary: 'Reset project performance settings' }),
+    ApiParam({ name: 'id', type: 'string', format: 'uuid' }),
+    ApiResponse({
+      status: 204,
+      description: 'Project performance settings reset',
+    }),
+  );
+}
+
+export function ApiGetProjectCommunicationSettings() {
+  return applyDecorators(
+    Get(':id/settings/communication'),
+    UseGuards(JwtGuard, ProjectOwnershipGuard),
+    ApiOAuth2([]),
+    ApiOperation({ summary: 'Get project communication settings' }),
+    ApiParam({ name: 'id', type: 'string', format: 'uuid' }),
+    ApiResponse({
+      status: 200,
+      description: 'Project communication settings found',
+      type: CommunicationSettingsResponse,
+    }),
+  );
+}
+
+export function ApiReplaceProjectCommunicationSettings() {
+  return applyDecorators(
+    Put(':id/settings/communication'),
+    UseGuards(JwtGuard, ProjectOwnershipGuard),
+    ApiOAuth2([]),
+    ApiOperation({ summary: 'Replace project communication settings' }),
+    ApiParam({ name: 'id', type: 'string', format: 'uuid' }),
+    ApiResponse({
+      status: 200,
+      description: 'Project communication settings replaced',
+      type: CommunicationSettingsResponse,
+    }),
+  );
+}
+
+export function ApiUpdateProjectCommunicationSettings() {
+  return applyDecorators(
+    Patch(':id/settings/communication'),
+    UseGuards(JwtGuard, ProjectOwnershipGuard),
+    ApiOAuth2([]),
+    ApiOperation({ summary: 'Update project communication settings' }),
+    ApiParam({ name: 'id', type: 'string', format: 'uuid' }),
+    ApiResponse({
+      status: 200,
+      description: 'Project communication settings updated',
+      type: CommunicationSettingsResponse,
+    }),
+  );
+}
+
+export function ApiDeleteProjectCommunicationSettings() {
+  return applyDecorators(
+    Delete(':id/settings/communication'),
+    UseGuards(JwtGuard, ProjectOwnershipGuard),
+    HttpCode(204),
+    ApiOAuth2([]),
+    ApiOperation({ summary: 'Reset project communication settings' }),
+    ApiParam({ name: 'id', type: 'string', format: 'uuid' }),
+    ApiResponse({
+      status: 204,
+      description: 'Project communication settings reset',
+    }),
+  );
+}
+
+export function ApiGetProjectRegionSettings() {
+  return applyDecorators(
+    Get(':id/settings/region-localization'),
+    UseGuards(JwtGuard, ProjectOwnershipGuard),
+    ApiOAuth2([]),
+    ApiOperation({ summary: 'Get project region and localization settings' }),
+    ApiParam({ name: 'id', type: 'string', format: 'uuid' }),
+    ApiResponse({
+      status: 200,
+      description: 'Project region settings found',
+      type: ProjectRegionSettingsResponse,
+    }),
+  );
+}
+
+export function ApiUpdateProjectRegionSettings() {
+  return applyDecorators(
+    Patch(':id/settings/region-localization'),
+    UseGuards(JwtGuard, ProjectOwnershipGuard),
+    ApiOAuth2([]),
+    ApiOperation({
+      summary: 'Update project region and localization settings',
+    }),
+    ApiParam({ name: 'id', type: 'string', format: 'uuid' }),
+    ApiResponse({
+      status: 200,
+      description: 'Project region settings updated',
+      type: ProjectRegionSettingsResponse,
+    }),
+  );
+}
+
+export function ApiDeleteProjectRegionSettings() {
+  return applyDecorators(
+    Delete(':id/settings/region-localization'),
+    UseGuards(JwtGuard, ProjectOwnershipGuard),
+    HttpCode(204),
+    ApiOAuth2([]),
+    ApiOperation({ summary: 'Reset project region and localization settings' }),
+    ApiParam({ name: 'id', type: 'string', format: 'uuid' }),
+    ApiResponse({
+      status: 204,
+      description: 'Project region settings reset',
+    }),
   );
 }

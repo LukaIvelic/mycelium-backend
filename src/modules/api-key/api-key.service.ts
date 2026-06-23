@@ -183,6 +183,15 @@ export class ApiKeyService {
   }
 
   /**
+   * Loads the active API key for a project.
+   * @param projectId Project identifier.
+   * @returns The active API key, or `null` when none exists.
+   */
+  findActiveKeyForProject(projectId: string): Promise<ApiKey | null> {
+    return this.apiKeyRepository.findActiveByProjectId(projectId);
+  }
+
+  /**
    * Checks whether a project currently has an active API key.
    * @param projectId Project identifier.
    * @returns `true` when an active key exists, otherwise `false`.
