@@ -52,6 +52,15 @@ const SQL_TOOL_DEFINITION = {
   strict: true,
 } as const;
 
+type AssistantReasoningEffort = 'medium' | 'none';
+
+interface OpenAiRequestOptions {
+  model: string;
+  reasoning: {
+    effort: AssistantReasoningEffort;
+  };
+}
+
 @Injectable()
 export class OpenAiAssistantProvider implements AssistantProvider {
   private readonly logger = new Logger(OpenAiAssistantProvider.name);
@@ -93,13 +102,19 @@ export class OpenAiAssistantProvider implements AssistantProvider {
       role: message.role,
       content: message.content,
     }));
+    const requestOptions = this.buildRequestOptions(request);
 
     // Tool-calling loop: let the model request data, run it, feed it back.
     // The final iteration disables tools so the model must produce an answer.
     for (let iteration = 0; ; iteration++) {
       const allowTools =
         toolsEnabled && iteration < ASSISTANT_MAX_TOOL_ITERATIONS;
-      const body = await this.requestResponse(input, instructions, allowTools);
+      const body = await this.requestResponse(
+        input,
+        instructions,
+        allowTools,
+        requestOptions,
+      );
 
       const functionCalls = allowTools ? this.extractFunctionCalls(body) : [];
       if (!functionCalls.length) {
@@ -107,7 +122,7 @@ export class OpenAiAssistantProvider implements AssistantProvider {
         if (!content) {
           throw new BadGatewayException(Errors.Assistant.ProviderEmptyResponse);
         }
-        return this.buildResponse(content, body);
+        return this.buildResponse(content, body, requestOptions.model);
       }
 
       for (const call of functionCalls) {
@@ -147,6 +162,7 @@ export class OpenAiAssistantProvider implements AssistantProvider {
       role: message.role,
       content: message.content,
     }));
+    const requestOptions = this.buildRequestOptions(request);
 
     for (let iteration = 0; ; iteration++) {
       const allowTools =
@@ -156,6 +172,7 @@ export class OpenAiAssistantProvider implements AssistantProvider {
         instructions,
         allowTools,
         onDelta,
+        requestOptions,
       );
 
       if (allowTools && turn.functionCalls.length) {
@@ -181,7 +198,7 @@ export class OpenAiAssistantProvider implements AssistantProvider {
 
       return {
         message: { role: 'assistant', content: turn.text },
-        model: turn.model ?? this.model,
+        model: turn.model ?? requestOptions.model,
         providerResponseId: turn.id,
         usage: turn.usage
           ? {
@@ -199,6 +216,7 @@ export class OpenAiAssistantProvider implements AssistantProvider {
     instructions: string,
     allowTools: boolean,
     onDelta: (delta: string) => void,
+    requestOptions: OpenAiRequestOptions,
   ): Promise<{
     functionCalls: OpenAiFunctionCall[];
     id?: string;
@@ -216,7 +234,8 @@ export class OpenAiAssistantProvider implements AssistantProvider {
         input,
         instructions,
         max_output_tokens: this.maxOutputTokens,
-        model: this.model,
+        model: requestOptions.model,
+        reasoning: requestOptions.reasoning,
         store: false,
         stream: true,
         ...(allowTools && {
@@ -318,6 +337,7 @@ export class OpenAiAssistantProvider implements AssistantProvider {
     input: unknown[],
     instructions: string,
     allowTools: boolean,
+    requestOptions: OpenAiRequestOptions,
   ): Promise<OpenAiResponseBody> {
     const response = await fetch(this.responsesUrl, {
       method: 'POST',
@@ -329,7 +349,8 @@ export class OpenAiAssistantProvider implements AssistantProvider {
         input,
         instructions,
         max_output_tokens: this.maxOutputTokens,
-        model: this.model,
+        model: requestOptions.model,
+        reasoning: requestOptions.reasoning,
         store: false,
         ...(allowTools && {
           tools: [SQL_TOOL_DEFINITION],
@@ -441,13 +462,14 @@ export class OpenAiAssistantProvider implements AssistantProvider {
   private buildResponse(
     content: string,
     body: OpenAiResponseBody,
+    fallbackModel: string,
   ): AssistantChatResponse {
     return {
       message: {
         role: 'assistant',
         content,
       },
-      model: body.model ?? this.model,
+      model: body.model ?? fallbackModel,
       providerResponseId: body.id,
       usage: body.usage
         ? {
@@ -461,6 +483,17 @@ export class OpenAiAssistantProvider implements AssistantProvider {
 
   private get responsesUrl(): string {
     return `${this.baseUrl.replace(/\/$/, '')}/responses`;
+  }
+
+  private buildRequestOptions(
+    request: AssistantCompletionRequest,
+  ): OpenAiRequestOptions {
+    return {
+      model: request.model ?? this.model,
+      reasoning: {
+        effort: request.thinking === false ? 'none' : 'medium',
+      },
+    };
   }
 
   private extractText(body: OpenAiResponseBody): string {

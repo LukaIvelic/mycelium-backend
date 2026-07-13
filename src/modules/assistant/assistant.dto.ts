@@ -4,6 +4,7 @@ import {
   ArrayMaxSize,
   ArrayMinSize,
   IsArray,
+  IsBoolean,
   IsIn,
   IsOptional,
   IsString,
@@ -20,6 +21,14 @@ export const assistantMessageRoleValues = [
 ] as const;
 
 export type AssistantMessageRole = (typeof assistantMessageRoleValues)[number];
+
+export const assistantModelValues = [
+  'gpt-5.6-sol',
+  'gpt-5.6-terra',
+  'gpt-5.6-luna',
+] as const;
+
+export type AssistantModel = (typeof assistantModelValues)[number];
 
 export class AssistantMessageDto {
   @ApiProperty({ enum: assistantMessageRoleValues, example: 'user' })
@@ -49,6 +58,25 @@ export class AssistantChatDto {
   @IsOptional()
   @IsUUID()
   projectId?: string;
+
+  @ApiProperty({
+    enum: assistantModelValues,
+    example: 'gpt-5.6-sol',
+    required: false,
+  })
+  @IsOptional()
+  @IsIn(assistantModelValues)
+  model?: AssistantModel;
+
+  @ApiProperty({
+    default: true,
+    description:
+      'When true, the assistant uses medium reasoning effort. When false, it requests no reasoning effort.',
+    required: false,
+  })
+  @IsOptional()
+  @IsBoolean()
+  thinking?: boolean;
 }
 
 export class AssistantUsageDto {
@@ -72,7 +100,7 @@ export class AssistantChatResponse {
   })
   message!: AssistantMessageDto;
 
-  @ApiProperty({ example: 'gpt-4.1' })
+  @ApiProperty({ example: 'gpt-5.6-sol' })
   model!: string;
 
   @ApiProperty({ required: false, example: 'resp_123' })

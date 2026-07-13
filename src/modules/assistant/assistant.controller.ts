@@ -38,7 +38,9 @@ export class AssistantController {
   ): Promise<AssistantChatResponse> {
     return this.assistantService.chat({
       messages: dto.messages,
+      model: dto.model,
       projectId: dto.projectId,
+      thinking: dto.thinking,
       userId,
     });
   }
@@ -76,7 +78,13 @@ export class AssistantController {
 
     try {
       const result = await this.assistantService.streamChat(
-        { messages: dto.messages, projectId: dto.projectId, userId },
+        {
+          messages: dto.messages,
+          model: dto.model,
+          projectId: dto.projectId,
+          thinking: dto.thinking,
+          userId,
+        },
         (delta) => write('delta', { content: delta }),
       );
       write('done', { model: result.model, usage: result.usage });

@@ -1,6 +1,7 @@
 import type {
   AssistantChatResponse,
   AssistantMessageDto,
+  AssistantModel,
 } from './assistant.dto';
 
 export interface AssistantAccount {
@@ -11,7 +12,9 @@ export interface AssistantAccount {
 export interface AssistantCompletionRequest {
   account?: AssistantAccount;
   messages: AssistantMessageDto[];
+  model?: AssistantModel;
   projectId?: string;
+  thinking?: boolean;
   userId: string;
 }
 
