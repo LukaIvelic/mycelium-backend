@@ -1,4 +1,7 @@
 export interface Node {
+  data?: {
+    label: string;
+  };
   id: string;
   label: string;
 }

@@ -16,6 +16,8 @@ type IntegrationLookup = {
 };
 
 const EDGE_REQUEST_SUMMARY_LIMIT = 50;
+const EXTERNAL_CLIENT_NODE_ID = 'external:client';
+const EXTERNAL_CLIENT_LABEL = 'External Client';
 
 /** Builds flow graph DTOs from logs and integrations. */
 @Injectable()
@@ -65,9 +67,15 @@ export class FlowGraphService {
     nodes.set(sourceNode.id, sourceNode);
 
     const targetNode = this.resolveStoredTargetNode(log, callerIntegration);
-    if (targetNode && sourceNode.id !== targetNode.id) {
-      nodes.set(targetNode.id, targetNode);
-      this.addEdge(edges, sourceNode, targetNode, log, requestDetail);
+    if (targetNode) {
+      this.addResolvedEdge(
+        nodes,
+        edges,
+        sourceNode,
+        targetNode,
+        log,
+        requestDetail,
+      );
     }
 
     return {
@@ -112,10 +120,10 @@ export class FlowGraphService {
       nodes.set(sourceNode.id, sourceNode);
 
       const targetNode = this.resolveTargetNode(log, integrations);
-      if (!targetNode || sourceNode.id === targetNode.id) continue;
+      if (!targetNode) continue;
 
-      nodes.set(targetNode.id, targetNode);
-      this.addEdge(
+      this.addResolvedEdge(
+        nodes,
         edges,
         sourceNode,
         targetNode,
@@ -258,6 +266,32 @@ export class FlowGraphService {
     this.sortCommunications(edge.data.communications);
 
     edges.set(edgeId, edge);
+  }
+
+  /**
+   * Adds an edge for a resolved source/target pair, preserving root inbound
+   * service requests as external client traffic instead of dropping them as
+   * self-loops.
+   */
+  private addResolvedEdge(
+    nodes: Map<string, GraphNode>,
+    edges: Map<string, Edge>,
+    sourceNode: GraphNode,
+    targetNode: GraphNode,
+    log: Log,
+    requestDetail?: EdgeRequestDetailSummary,
+  ): void {
+    if (sourceNode.id === targetNode.id) {
+      if (log.parentSpanId) return;
+
+      const externalNode = this.createExternalClientNode();
+      nodes.set(externalNode.id, externalNode);
+      this.addEdge(edges, externalNode, targetNode, log, requestDetail);
+      return;
+    }
+
+    nodes.set(targetNode.id, targetNode);
+    this.addEdge(edges, sourceNode, targetNode, log, requestDetail);
   }
 
   /**
@@ -472,10 +506,10 @@ export class FlowGraphService {
   private createIntegrationNode(integration: Integration): GraphNode {
     const integrationId = `integration:${integration.id}`;
 
-    return {
-      id: integrationId,
-      label: integration.name ?? integration.key ?? integration.origin,
-    };
+    return this.createNode(
+      integrationId,
+      integration.name ?? integration.key ?? integration.origin,
+    );
   }
 
   /**
@@ -491,10 +525,7 @@ export class FlowGraphService {
     const originId = `origin:${normalizedOrigin}`;
     const originLabel = new URL(normalizedOrigin).host;
 
-    return {
-      id: originId,
-      label: label ?? originLabel ?? normalizedOrigin,
-    };
+    return this.createNode(originId, label ?? originLabel ?? normalizedOrigin);
   }
 
   /**
@@ -505,9 +536,31 @@ export class FlowGraphService {
   private createFallbackSourceNode(log: Log): GraphNode {
     const sourceNodeId = `integration-key:${log.integrationKey ?? log.id}`;
 
+    return this.createNode(
+      sourceNodeId,
+      log.integrationName ?? log.integrationKey ?? sourceNodeId,
+    );
+  }
+
+  /**
+   * Builds the synthetic node used for uninstrumented callers such as a browser,
+   * curl, or local laptop request.
+   */
+  private createExternalClientNode(): GraphNode {
+    return this.createNode(EXTERNAL_CLIENT_NODE_ID, EXTERNAL_CLIENT_LABEL);
+  }
+
+  /**
+   * Builds a node with both the legacy top-level label and the React Flow data
+   * label consumed by fallback node rendering.
+   */
+  private createNode(id: string, label: string): GraphNode {
     return {
-      id: sourceNodeId,
-      label: log.integrationName ?? log.integrationKey ?? sourceNodeId,
+      data: {
+        label,
+      },
+      id,
+      label,
     };
   }
 
