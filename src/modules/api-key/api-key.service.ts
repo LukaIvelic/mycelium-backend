@@ -44,9 +44,6 @@ export class ApiKeyService {
   async validateApiKey(rawKey: string): Promise<ApiKey | null> {
     const hash = this.hash(rawKey);
 
-    const bloomResult = this.checkBloom(hash);
-    if (bloomResult !== undefined) return bloomResult;
-
     const localCacheResult = this.checkLocalCache(hash);
     if (localCacheResult !== undefined) return localCacheResult;
 
@@ -54,15 +51,6 @@ export class ApiKeyService {
     if (redisCacheResult !== undefined) return redisCacheResult;
 
     return this.checkDatabase(hash);
-  }
-
-  /**
-   * Performs the bloom-filter existence shortcut for a key hash.
-   * @param hash Hashed API key value.
-   * @returns `null` when the key is definitely absent, otherwise `undefined`.
-   */
-  private checkBloom(hash: string): null | undefined {
-    return this.bloom.has(hash) ? undefined : null;
   }
 
   /**
@@ -97,6 +85,7 @@ export class ApiKeyService {
     const ttl = result ? this.ttlValid : this.ttlInvalid;
     await this.redisCache.set(hash, this.cachePrefix, result, ttl);
     this.localCache.set(hash, result);
+    if (result && !this.bloom.has(hash)) this.bloom.add(hash);
 
     return result;
   }

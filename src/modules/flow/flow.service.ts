@@ -3,7 +3,6 @@ import { Injectable } from '@nestjs/common';
 import type { Integration, Log } from '@/database';
 import type { Database } from '@/database/database.types';
 import { FlowDataService } from './_services/data.service';
-import { FlowGraphService } from './_services/graph.service';
 import type { Edge, EdgeRequestDetailSummary, FlowDto, Node } from './flow.dto';
 import { FlowRepository } from './flow.repository';
 
@@ -16,7 +15,6 @@ export class FlowService {
   constructor(
     private readonly flowRepository: FlowRepository,
     private readonly flowDataService: FlowDataService,
-    private readonly flowGraphService: FlowGraphService,
   ) {}
 
   /**
@@ -39,32 +37,17 @@ export class FlowService {
    */
   async syncProjectFlowWithLog(
     log: Log,
-    integration?: Integration | null,
-    callerIntegration?: Integration | null,
-    requestDetail?: EdgeRequestDetailSummary,
+    _integration?: Integration | null,
+    _callerIntegration?: Integration | null,
+    _requestDetail?: EdgeRequestDetailSummary,
     tx?: Database,
   ): Promise<void> {
-    const graph = await this.findStoredGraphByProjectId(log.projectId, tx);
-
-    if (this.isLegacyGraph(graph)) {
-      const rebuiltGraph = await this.flowDataService.buildProjectFlow(
-        log.projectId,
-        tx,
-      );
-
-      await this.upsertProjectFlow(log.projectId, rebuiltGraph, tx);
-      return;
-    }
-
-    const nextGraph = this.flowGraphService.mergeLog(
-      graph,
-      log,
-      integration,
-      callerIntegration,
-      requestDetail,
+    const graph = await this.flowDataService.buildProjectFlow(
+      log.projectId,
+      tx,
     );
 
-    await this.upsertProjectFlow(log.projectId, nextGraph, tx);
+    await this.upsertProjectFlow(log.projectId, graph, tx);
   }
 
   /**

@@ -8,7 +8,7 @@ export const ASSISTANT_SQL_IDLE_TIMEOUT_MS = 30_000;
 // SELECT (e.g. log_detail.body) cannot blow up the token budget.
 export const ASSISTANT_SQL_MAX_RESULT_CHARS = 12_000;
 
-export const ASSISTANT_MAX_TOOL_ITERATIONS = 4;
+export const ASSISTANT_MAX_TOOL_ITERATIONS = 6;
 
 export class AssistantSqlValidationError extends Error {
   constructor(message: string) {
@@ -87,6 +87,26 @@ user_profile(user_id, first_name, last_name, username, email, bio, job_title, co
 
 To identify people: the project owner is project.user_id; members are in project_member. Join to user_profile for display name/username and to "user" for email. A user's name is COALESCE(first_name || ' ' || last_name, username, email).`;
 
+export const ASSISTANT_TRACE_RECONSTRUCTION_GUIDANCE = `Trace reconstruction guidance for Mycelium demo microservices:
+- When the user asks what happened after visiting localhost:3003, asks about Sentence Service, or asks for phrases/sentences made by the services, inspect logs instead of guessing.
+- First find the most recent root request for Sentence Service in the current project: integration_name = 'Sentence Service', origin = 'http://localhost:3003', method = 'GET', path IN ('/', '/sentence/compose'), parent_span_id IS NULL. Order by timestamp DESC and use its trace_id.
+- Then fetch all rows for that trace_id ordered by timestamp ASC. Include integration_name, method, path, origin, status_code, duration_ms, span_id, parent_span_id, and selected log_detail columns such as body, headers, body_size_kb, content_length, and content_type.
+- For communication paths, prefer caller-side rows where integration_name is the caller and origin is the callee origin. Server-side inbound rows can have path = '/', so treat those as confirmations rather than the named path.
+- The normal topology for a composed sentence is: Sentence Service -> World Service -> Color Service -> Flower Detail Service -> Flower Service, plus Sentence Service -> Sunshine Service for the greeting. Color Service may also call Sentence Service /hello as a side request.
+- Each phrase usually starts with a Sentence Service caller row to Sunshine Service with a path like /greetings/*, and a Sentence Service caller row to World Service with a path like /world/*. The World Service request body can contain value, colorPath, detailPath, flowerPath, source, and index. Use value to order and summarize the three generated combinations when present.
+- Match downstream calls in the same trace by those body paths: World Service path = colorPath, Color Service path = detailPath, and Flower Detail Service path = flowerPath.
+- Response bodies are not stored in log_detail; for this demo, reconstruct phrase text from deterministic endpoint paths and request metadata. Say that the phrase is reconstructed from request path/body metadata if that matters.
+
+Endpoint phrase mapping for the demo:
+- World paths: /world/phrase -> "World, i like"; /world/summary -> "World summary:"; /world/meadow-phrase -> "Meadow carries"; /world/bright-line -> "Bright day brings"; /world/bloom-line -> "Bloom report:"; /world/garden-line -> "Garden note:"; /world/harvest-line -> "Harvest says"; /world/pollen-line -> "Pollen trail finds"; /world/field-note -> "Field note:".
+- Color paths: /colors/red-flower -> "red"; /colors/blue-flower and /colors/summary -> "blue"; /colors/golden-flower -> "golden"; /colors/violet-flower -> "violet"; /colors/emerald-flower -> "emerald"; /colors/coral-flower -> "coral"; /colors/amber-flower -> "amber"; /colors/indigo-flower -> "indigo".
+- Detail paths: /flowers/garden-details -> "garden"; /flowers/garden-summary -> "field"; /flowers/meadow-details -> "meadow"; /flowers/bouquet-details -> "bouquet"; /flowers/wildflower-details -> "wildflower patch"; /flowers/glasshouse-details -> "glasshouse"; /flowers/field-details -> "open field".
+- Flower paths: /flowers/rose -> "roses"; /flowers/tulip -> "tulips"; /flowers/lavender -> "lavender"; /flowers/orchid -> "orchids"; /flowers/sunflower -> "sunflowers"; /flowers/peony -> "peonies"; /flowers/daisy -> "daisies"; /flowers/iris -> "irises".
+- Greeting paths: /greetings/sunshine -> "sunshine"; /greetings/morning -> "morning"; /greetings/daylight -> "daylight"; /greetings/sunbeam -> "sunbeam"; /greetings/glow -> "glow"; /greetings/radiance -> "radiance"; /greetings/brightness -> "brightness"; /greetings/golden-hour -> "golden hour".
+- Final phrase format: Hello <greeting>, <world text> <color> <detail> <flower>.
+
+For detailed answers about this trace, report the selected trace_id, root request, service topology, and a compact list of the three reconstructed phrases with their request chains.`;
+
 export function buildSqlToolGuidance(projectId?: string): string {
   const scope = projectId
     ? `The user is currently viewing project_id = '${projectId}'. Filter by this project_id unless the user clearly asks about another project.`
@@ -100,5 +120,7 @@ export function buildSqlToolGuidance(projectId?: string): string {
     'After querying, answer in prose grounded in the rows — do not dump raw tables unless asked.',
     '',
     ASSISTANT_SQL_SCHEMA_CATALOG,
+    '',
+    ASSISTANT_TRACE_RECONSTRUCTION_GUIDANCE,
   ].join('\n');
 }

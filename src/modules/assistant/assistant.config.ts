@@ -1,4 +1,4 @@
-export const ASSISTANT_DEFAULT_MODEL = 'gpt-4.1';
+export const ASSISTANT_DEFAULT_MODEL = 'gpt-5.6-sol';
 export const ASSISTANT_DEFAULT_BASE_URL = 'https://api.openai.com/v1';
 export const ASSISTANT_DEFAULT_MAX_OUTPUT_TOKENS = 1200;
 export const ASSISTANT_DEFAULT_RATE_LIMIT_WINDOW_SECONDS = 60;
