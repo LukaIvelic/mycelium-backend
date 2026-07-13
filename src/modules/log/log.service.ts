@@ -94,6 +94,14 @@ export class LogService {
         log,
         integration,
         callerIntegration,
+        {
+          bodySizeKb: dto.bodySizeKB,
+          hasBody: Boolean(dto.body),
+          headerSizeBytes: Buffer.byteLength(
+            JSON.stringify(dto.headers ?? {}),
+            'utf8',
+          ),
+        },
         tx,
       );
 

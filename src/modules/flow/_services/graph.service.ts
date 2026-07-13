@@ -1,12 +1,21 @@
 import { Injectable } from '@nestjs/common';
 import type { Integration, Log } from '@/database';
-import type { Edge, FlowDto, Node } from '../flow.dto';
+import type {
+  Edge,
+  EdgeCommunication,
+  EdgeRequestDetailSummary,
+  EdgeRequestSummary,
+  FlowDto,
+  Node,
+} from '../flow.dto';
 
 type GraphNode = Node;
 type IntegrationLookup = {
   byId: Map<string, Integration>;
   byOrigin: Map<string, Integration>;
 };
+
+const EDGE_REQUEST_SUMMARY_LIMIT = 50;
 
 /** Builds flow graph DTOs from logs and integrations. */
 @Injectable()
@@ -17,12 +26,16 @@ export class FlowGraphService {
    * @param integrations Integration lookup maps for direct ids and origins.
    * @returns The generated flow graph.
    */
-  buildGraph(logs: Log[], integrations: IntegrationLookup): FlowDto {
+  buildGraph(
+    logs: Log[],
+    integrations: IntegrationLookup,
+    requestDetails = new Map<string, EdgeRequestDetailSummary>(),
+  ): FlowDto {
     const nodes = new Map<string, GraphNode>();
     const edges = new Map<string, Edge>();
 
     this.addIntegrationNodes(nodes, integrations.byId);
-    this.addLogTopology(nodes, edges, logs, integrations);
+    this.addLogTopology(nodes, edges, logs, integrations, requestDetails);
 
     return {
       nodes: this.sortNodes(nodes.values()),
@@ -43,6 +56,7 @@ export class FlowGraphService {
     log: Log,
     integration?: Integration | null,
     callerIntegration?: Integration | null,
+    requestDetail?: EdgeRequestDetailSummary,
   ): FlowDto {
     const nodes = new Map(graph.nodes.map((node) => [node.id, node]));
     const edges = new Map(graph.edges.map((edge) => [edge.id, edge]));
@@ -53,7 +67,7 @@ export class FlowGraphService {
     const targetNode = this.resolveStoredTargetNode(log, callerIntegration);
     if (targetNode && sourceNode.id !== targetNode.id) {
       nodes.set(targetNode.id, targetNode);
-      this.addEdge(edges, sourceNode.id, targetNode.id);
+      this.addEdge(edges, sourceNode, targetNode, log, requestDetail);
     }
 
     return {
@@ -91,6 +105,7 @@ export class FlowGraphService {
     edges: Map<string, Edge>,
     logs: Log[],
     integrations: IntegrationLookup,
+    requestDetails: Map<string, EdgeRequestDetailSummary>,
   ): void {
     for (const log of logs) {
       const sourceNode = this.resolveSourceNode(log, integrations);
@@ -100,7 +115,13 @@ export class FlowGraphService {
       if (!targetNode || sourceNode.id === targetNode.id) continue;
 
       nodes.set(targetNode.id, targetNode);
-      this.addEdge(edges, sourceNode.id, targetNode.id);
+      this.addEdge(
+        edges,
+        sourceNode,
+        targetNode,
+        log,
+        requestDetails.get(log.id),
+      );
     }
   }
 
@@ -199,23 +220,230 @@ export class FlowGraphService {
   }
 
   /**
-   * Adds a de-duplicated edge between two node identifiers.
+   * Adds a de-duplicated edge between two graph nodes and aggregates the
+   * concrete request route observed on that edge.
    * @param edges Mutable graph edge collection.
-   * @param sourceId Source node identifier.
-   * @param targetId Target node identifier.
+   * @param sourceNode Source graph node.
+   * @param targetNode Target graph node.
+   * @param log Log that observed this communication.
+   * @param requestDetail Detail summary for the observed request.
    * @returns Nothing.
    */
   private addEdge(
     edges: Map<string, Edge>,
-    sourceId: string,
-    targetId: string,
+    sourceNode: GraphNode,
+    targetNode: GraphNode,
+    log: Log,
+    requestDetail?: EdgeRequestDetailSummary,
   ): void {
-    const edgeId = `${sourceId}->${targetId}`;
-    edges.set(edgeId, {
-      id: edgeId,
-      source: sourceId,
-      target: targetId,
+    const edgeId = `${sourceNode.id}->${targetNode.id}`;
+    const edge = this.normalizeEdge(
+      edges.get(edgeId) ?? {
+        id: edgeId,
+        source: sourceNode.id,
+        target: targetNode.id,
+      },
+    );
+
+    edge.data = {
+      communicationCount: edge.data.communicationCount,
+      communications: edge.data.communications,
+      requests: edge.data.requests,
+      sourceLabel: sourceNode.label,
+      targetLabel: targetNode.label,
+    };
+
+    this.addCommunication(edge, log);
+    this.addRequestSummary(edge, log, requestDetail);
+    this.sortCommunications(edge.data.communications);
+
+    edges.set(edgeId, edge);
+  }
+
+  /**
+   * Normalizes legacy stored edges so new communication metadata can be merged
+   * without requiring a database migration for the JSON payload.
+   * @param edge Edge loaded from storage or created in memory.
+   * @returns An edge with a complete data object.
+   */
+  private normalizeEdge(
+    edge: Edge,
+  ): Edge & { data: NonNullable<Edge['data']> } {
+    const communications = edge.data?.communications ?? [];
+    const requests = edge.data?.requests ?? [];
+
+    return {
+      ...edge,
+      data: {
+        communicationCount:
+          edge.data?.communicationCount ??
+          this.countCommunications(communications),
+        communications,
+        requests,
+        sourceLabel: edge.data?.sourceLabel ?? edge.source,
+        targetLabel: edge.data?.targetLabel ?? edge.target,
+      },
+    };
+  }
+
+  /**
+   * Adds or updates one concrete request route inside an edge.
+   * @param edge Edge whose metadata should be updated.
+   * @param log Log that observed the route.
+   * @returns Nothing.
+   */
+  private addCommunication(
+    edge: Edge & { data: NonNullable<Edge['data']> },
+    log: Log,
+  ): void {
+    const communication = this.createCommunication(log);
+    const existing = edge.data.communications.find(
+      ({ id }) => id === communication.id,
+    );
+
+    edge.data.communicationCount += 1;
+
+    if (!existing) {
+      edge.data.communications.push(communication);
+      return;
+    }
+
+    const previousCount = existing.count;
+    const nextCount = previousCount + 1;
+    const totalDuration =
+      existing.averageDurationMs * previousCount + log.durationMs;
+
+    existing.averageDurationMs = Math.round(totalDuration / nextCount);
+    existing.count = nextCount;
+    existing.lastDurationMs = log.durationMs;
+    existing.lastSeenAt = communication.lastSeenAt;
+    existing.protocol = communication.protocol;
+    existing.statusCode = log.statusCode;
+  }
+
+  /**
+   * Builds a display-ready aggregate for a single request route.
+   * @param log Log that observed the route.
+   * @returns Edge communication metadata.
+   */
+  private createCommunication(log: Log): EdgeCommunication {
+    const method = log.method.trim().toUpperCase();
+    const path = log.path.trim() || '/';
+
+    return {
+      averageDurationMs: log.durationMs,
+      count: 1,
+      id: `${method} ${path}`,
+      lastDurationMs: log.durationMs,
+      lastSeenAt: this.serializeTimestamp(log.timestamp),
+      method,
+      path,
+      protocol: log.protocol.trim().toLowerCase(),
+      statusCode: log.statusCode,
+    };
+  }
+
+  /**
+   * Adds a single request summary to the edge, keeping only recent requests.
+   * @param edge Edge whose request list should be updated.
+   * @param log Log that observed the request.
+   * @returns Nothing.
+   */
+  private addRequestSummary(
+    edge: Edge & { data: NonNullable<Edge['data']> },
+    log: Log,
+    requestDetail?: EdgeRequestDetailSummary,
+  ): void {
+    const requestSummary = this.createRequestSummary(log, requestDetail);
+    const otherRequests = edge.data.requests.filter(
+      ({ id }) => id !== requestSummary.id,
+    );
+
+    edge.data.requests = [requestSummary, ...otherRequests];
+    this.sortRequestSummaries(edge.data.requests);
+
+    if (edge.data.requests.length > EDGE_REQUEST_SUMMARY_LIMIT) {
+      edge.data.requests.length = EDGE_REQUEST_SUMMARY_LIMIT;
+    }
+  }
+
+  /**
+   * Builds display metadata for one concrete request on an edge.
+   * @param log Log that observed the request.
+   * @param requestDetail Detail summary for the observed request.
+   * @returns Request summary metadata.
+   */
+  private createRequestSummary(
+    log: Log,
+    requestDetail?: EdgeRequestDetailSummary,
+  ): EdgeRequestSummary {
+    const method = log.method.trim().toUpperCase();
+    const path = log.path.trim() || '/';
+
+    return {
+      bodySizeKb: requestDetail?.bodySizeKb ?? 0,
+      durationMs: log.durationMs,
+      hasBody: requestDetail?.hasBody ?? false,
+      headerSizeBytes: requestDetail?.headerSizeBytes ?? 0,
+      id: log.id,
+      method,
+      path,
+      protocol: log.protocol.trim().toLowerCase(),
+      spanId: log.spanId,
+      statusCode: log.statusCode,
+      timestamp: this.serializeTimestamp(log.timestamp),
+      traceId: log.traceId,
+    };
+  }
+
+  /**
+   * Counts all observed requests for an edge from its route aggregates.
+   * @param communications Route aggregates stored on an edge.
+   * @returns Total request count.
+   */
+  private countCommunications(communications: EdgeCommunication[]): number {
+    return communications.reduce((total, { count }) => total + count, 0);
+  }
+
+  /**
+   * Sorts routes by most recent activity for stable storage and UI display.
+   * @param communications Route aggregates to sort.
+   * @returns Nothing.
+   */
+  private sortCommunications(communications: EdgeCommunication[]): void {
+    communications.sort((left, right) => {
+      const byLastSeen =
+        new Date(right.lastSeenAt).getTime() -
+        new Date(left.lastSeenAt).getTime();
+
+      if (byLastSeen) return byLastSeen;
+      return left.id.localeCompare(right.id);
     });
+  }
+
+  /**
+   * Sorts request summaries by newest first for stable storage and display.
+   * @param requests Request summaries to sort.
+   * @returns Nothing.
+   */
+  private sortRequestSummaries(requests: EdgeRequestSummary[]): void {
+    requests.sort((left, right) => {
+      const byTimestamp =
+        new Date(right.timestamp).getTime() -
+        new Date(left.timestamp).getTime();
+
+      if (byTimestamp) return byTimestamp;
+      return left.id.localeCompare(right.id);
+    });
+  }
+
+  /**
+   * Serializes a log timestamp into an ISO string.
+   * @param timestamp Log timestamp value.
+   * @returns ISO timestamp.
+   */
+  private serializeTimestamp(timestamp: Date): string {
+    return timestamp.toISOString();
   }
 
   /**

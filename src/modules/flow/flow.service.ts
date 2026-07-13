@@ -4,7 +4,7 @@ import type { Integration, Log } from '@/database';
 import type { Database } from '@/database/database.types';
 import { FlowDataService } from './_services/data.service';
 import { FlowGraphService } from './_services/graph.service';
-import { Edge, FlowDto, Node } from './flow.dto';
+import type { Edge, EdgeRequestDetailSummary, FlowDto, Node } from './flow.dto';
 import { FlowRepository } from './flow.repository';
 
 /** Reads and persists per-project flow graphs. */
@@ -25,7 +25,7 @@ export class FlowService {
    * @returns A promise that resolves when the flow is up to date.
    */
   async syncProjectFlow(projectId: string, tx?: Database): Promise<void> {
-    const graph = await this.flowDataService.buildProjectFlow(projectId);
+    const graph = await this.flowDataService.buildProjectFlow(projectId, tx);
     await this.upsertProjectFlow(projectId, graph, tx);
   }
 
@@ -41,14 +41,27 @@ export class FlowService {
     log: Log,
     integration?: Integration | null,
     callerIntegration?: Integration | null,
+    requestDetail?: EdgeRequestDetailSummary,
     tx?: Database,
   ): Promise<void> {
-    const graph = await this.findByProjectId(log.projectId, tx);
+    const graph = await this.findStoredGraphByProjectId(log.projectId, tx);
+
+    if (this.isLegacyGraph(graph)) {
+      const rebuiltGraph = await this.flowDataService.buildProjectFlow(
+        log.projectId,
+        tx,
+      );
+
+      await this.upsertProjectFlow(log.projectId, rebuiltGraph, tx);
+      return;
+    }
+
     const nextGraph = this.flowGraphService.mergeLog(
       graph,
       log,
       integration,
       callerIntegration,
+      requestDetail,
     );
 
     await this.upsertProjectFlow(log.projectId, nextGraph, tx);
@@ -60,12 +73,56 @@ export class FlowService {
    * @returns The stored nodes and edges, or an empty graph when none exists.
    */
   async findByProjectId(projectId: string, tx?: Database): Promise<FlowDto> {
+    const graph = await this.findStoredGraphByProjectId(projectId, tx);
+
+    if (!this.isLegacyGraph(graph)) {
+      return graph;
+    }
+
+    const rebuiltGraph = await this.flowDataService.buildProjectFlow(
+      projectId,
+      tx,
+    );
+
+    await this.upsertProjectFlow(projectId, rebuiltGraph, tx);
+
+    return rebuiltGraph;
+  }
+
+  /**
+   * Loads a stored graph without doing legacy rebuilds.
+   * @param projectId Project identifier.
+   * @param tx Optional transaction handle to join an existing read flow.
+   * @returns The stored flow graph or an empty graph.
+   */
+  private async findStoredGraphByProjectId(
+    projectId: string,
+    tx?: Database,
+  ): Promise<FlowDto> {
     const flow = await this.flowRepository.findByProjectId(projectId, tx);
 
     return {
       nodes: (flow?.nodes as Node[]) ?? this.emptyNodes,
       edges: (flow?.edges as Edge[]) ?? this.emptyEdges,
     };
+  }
+
+  /**
+   * Detects stored graph snapshots created before edge communication metadata.
+   * @param graph Flow graph to inspect.
+   * @returns Whether the graph needs to be rebuilt from logs.
+   */
+  private isLegacyGraph(graph: FlowDto): boolean {
+    return graph.edges.some(
+      (edge) =>
+        !Array.isArray(edge.data?.communications) ||
+        !Array.isArray(edge.data?.requests) ||
+        edge.data.requests.some(
+          (request) =>
+            typeof request.hasBody !== 'boolean' ||
+            typeof request.headerSizeBytes !== 'number',
+        ),
+    );
   }
 
   /**
@@ -76,6 +133,40 @@ export class FlowService {
   private createSignature(graph: FlowDto): string {
     const nodes = graph.nodes.map((node) => node.id).sort();
     const edges = graph.edges.map((edge) => ({
+      data: {
+        communicationCount: edge.data?.communicationCount ?? 0,
+        communications: [...(edge.data?.communications ?? [])]
+          .map((communication) => ({
+            averageDurationMs: communication.averageDurationMs,
+            count: communication.count,
+            id: communication.id,
+            lastDurationMs: communication.lastDurationMs,
+            lastSeenAt: communication.lastSeenAt,
+            method: communication.method,
+            path: communication.path,
+            protocol: communication.protocol,
+            statusCode: communication.statusCode,
+          }))
+          .sort((left, right) => left.id.localeCompare(right.id)),
+        requests: [...(edge.data?.requests ?? [])]
+          .map((request) => ({
+            bodySizeKb: request.bodySizeKb,
+            durationMs: request.durationMs,
+            hasBody: request.hasBody,
+            headerSizeBytes: request.headerSizeBytes,
+            id: request.id,
+            method: request.method,
+            path: request.path,
+            protocol: request.protocol,
+            spanId: request.spanId,
+            statusCode: request.statusCode,
+            timestamp: request.timestamp,
+            traceId: request.traceId,
+          }))
+          .sort((left, right) => left.id.localeCompare(right.id)),
+        sourceLabel: edge.data?.sourceLabel ?? edge.source,
+        targetLabel: edge.data?.targetLabel ?? edge.target,
+      },
       source: edge.source,
       target: edge.target,
     }));

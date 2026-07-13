@@ -6,11 +6,19 @@ import {
   type Integration,
   integrations,
   type Log,
+  logDetails,
   logs,
   type NewFlow,
 } from '@/database';
 import { DRIZZLE } from '@/database/database.module';
 import type { Database } from '@/database/database.types';
+
+export interface FlowLogDetailSummaryRow {
+  body: string | null;
+  bodySizeKb: number;
+  headers: unknown;
+  logId: string;
+}
 
 /** Data access for the `flow` table plus reads needed to rebuild flow graphs. */
 @Injectable()
@@ -70,8 +78,11 @@ export class FlowRepository {
    * @param projectId Project identifier.
    * @returns Logs ordered oldest first.
    */
-  async findProjectLogsOrderedAsc(projectId: string): Promise<Log[]> {
-    return this.db
+  async findProjectLogsOrderedAsc(
+    projectId: string,
+    tx?: Database,
+  ): Promise<Log[]> {
+    return (tx ?? this.db)
       .select()
       .from(logs)
       .where(eq(logs.projectId, projectId))
@@ -83,10 +94,35 @@ export class FlowRepository {
    * @param projectId Project identifier.
    * @returns Integrations for the project.
    */
-  async findProjectIntegrations(projectId: string): Promise<Integration[]> {
-    return this.db
+  async findProjectIntegrations(
+    projectId: string,
+    tx?: Database,
+  ): Promise<Integration[]> {
+    return (tx ?? this.db)
       .select()
       .from(integrations)
       .where(eq(integrations.projectId, projectId));
+  }
+
+  /**
+   * Loads compact log detail data for all logs in a project.
+   * @param projectId Project identifier.
+   * @param tx Optional transaction handle to join an existing read flow.
+   * @returns Detail summary rows keyed by parent log id.
+   */
+  async findProjectLogDetailSummaries(
+    projectId: string,
+    tx?: Database,
+  ): Promise<FlowLogDetailSummaryRow[]> {
+    return (tx ?? this.db)
+      .select({
+        body: logDetails.body,
+        bodySizeKb: logDetails.bodySizeKb,
+        headers: logDetails.headers,
+        logId: logDetails.logId,
+      })
+      .from(logDetails)
+      .innerJoin(logs, eq(logDetails.logId, logs.id))
+      .where(eq(logs.projectId, projectId));
   }
 }
