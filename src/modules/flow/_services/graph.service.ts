@@ -66,7 +66,11 @@ export class FlowGraphService {
     const sourceNode = this.resolveStoredSourceNode(log, integration);
     nodes.set(sourceNode.id, sourceNode);
 
-    const targetNode = this.resolveStoredTargetNode(log, callerIntegration);
+    const targetNode = this.resolveStoredTargetNode(
+      log,
+      integration,
+      callerIntegration,
+    );
     if (targetNode) {
       this.addResolvedEdge(
         nodes,
@@ -194,12 +198,17 @@ export class FlowGraphService {
    */
   private resolveStoredTargetNode(
     log: Log,
+    integration?: Integration | null,
     callerIntegration?: Integration | null,
   ): GraphNode | null {
     if (callerIntegration) return this.createIntegrationNode(callerIntegration);
 
-    const normalizedOrigin = this.normalizeOrigin(log.origin);
+    const normalizedOrigin = this.resolveTargetOrigin(log);
     if (!normalizedOrigin) return null;
+
+    if (integration?.normalizedOrigin === normalizedOrigin) {
+      return this.createIntegrationNode(integration);
+    }
 
     return this.createOriginNode(normalizedOrigin);
   }
@@ -219,7 +228,7 @@ export class FlowGraphService {
       if (integration) return this.createIntegrationNode(integration);
     }
 
-    const normalizedOrigin = this.normalizeOrigin(log.origin);
+    const normalizedOrigin = this.resolveTargetOrigin(log);
     if (!normalizedOrigin) return null;
 
     const integration = integrations.byOrigin.get(normalizedOrigin);
@@ -565,30 +574,38 @@ export class FlowGraphService {
   }
 
   /**
+   * Resolves the request target origin. Older SDK server logs could miss the
+   * Host header and store an invalid target origin; for root inbound requests,
+   * the service integration origin is the target we need for external edges.
+   */
+  private resolveTargetOrigin(log: Log): string {
+    const normalizedOrigin = this.normalizeOrigin(log.origin);
+    if (normalizedOrigin) return normalizedOrigin;
+
+    if (log.parentSpanId) return '';
+
+    return this.normalizeOrigin(log.integrationOrigin);
+  }
+
+  /**
    * Normalizes an origin string for map keys and edge comparisons.
    * @param origin Raw origin value.
    * @returns A normalized absolute origin, or an empty string when invalid.
    */
   private normalizeOrigin(origin?: string | null): string {
-    const trailingSlashesRegex = /\/+$/;
-    const origins = ['http://', 'https://'];
-    const isAbsoluteOrigin = origins.some((prefix) =>
-      origin?.startsWith(prefix),
-    );
-
-    if (!origin || !isAbsoluteOrigin) {
-      return '';
-    }
+    const trimmedOrigin = origin?.trim();
+    if (!trimmedOrigin) return '';
 
     try {
-      return new URL(origin).origin.toLowerCase();
-    } catch {
-      const normalized = origin
-        .trim()
-        .toLowerCase()
-        .replace(trailingSlashesRegex, '');
+      const parsedOrigin = new URL(trimmedOrigin);
+      const isHttpOrigin =
+        parsedOrigin.protocol === 'http:' || parsedOrigin.protocol === 'https:';
 
-      return normalized;
+      if (!isHttpOrigin || !parsedOrigin.host) return '';
+
+      return parsedOrigin.origin.toLowerCase();
+    } catch {
+      return '';
     }
   }
 }
